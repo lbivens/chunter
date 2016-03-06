@@ -176,6 +176,7 @@ case "$1" in
         if [ "$ES" -ne 0 ]; then
             exit $ES
         fi
+        ;;
     ping)
         ## See if the VM is alive
         $NODETOOL ping
