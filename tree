@@ -1,7 +1,7 @@
 [0m├─ bugsnag─0.1.2
 │  └─ lager─3.0.1
 │     └─ goldrush─0.1.7
-├─ chunter─0.8.0
+├─ chunter─0.8.0p2
 ├─ eper─0.94.0
 ├─ erlsom─1.2.1
 ├─ erltrace─0.1.4
@@ -22,14 +22,14 @@
 │     └─ quickrand─1.5.1
 ├─ jsx─1.4.5
 ├─ jsxd─0.1.10
-├─ libchunter─0.1.45
-├─ libhowl─0.1.31
-│  └─ mdns_client_lib─0.1.33
+├─ libchunter─0.1.46
+├─ libhowl─0.1.34
+│  └─ mdns_client_lib─0.1.38
 │     ├─ mdns_client─0.1.7
-│     └─ pooler─1.4.0
-├─ libsnarl─0.3.40
+│     └─ pooler─1.5.0
+├─ libsnarl─0.3.44
 │  └─ oauth2─0.6.1
-├─ libsniffle─0.3.37
+├─ libsniffle─0.3.45
 ├─ ranch─1.1.0
 ├─ recon─2.2.1
 └─ smurf─0.1.3
