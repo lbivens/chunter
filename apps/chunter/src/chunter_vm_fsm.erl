@@ -342,8 +342,6 @@ initialized({create, Package, Dataset, VMSpec},
                     %% running already when the vmadm is doing it's work
                     chunter_zlogin:start(UUID, ZoneType),
                     do_create(UUID, VMData, VMSpec),
-                    update_timeout(UUID),
-                    chunter_vmadm:start(UUID),
                     {next_state, creating,
                      State#state{type = Type,
                                  zone_type = ZoneType,
@@ -1588,7 +1586,9 @@ do_create(UUID, CreateJSON, VMSpec) ->
             lager:debug(
               "[create:~s] Done creating continuing on.", [UUID]),
             Org = jsxd:get(<<"owner">>, <<>>, VMSpec),
-            confirm_create(UUID, Org);
+            confirm_create(UUID, Org),
+            update_timeout(UUID),
+            chunter_vmadm:start(UUID);
         {error, E} ->
             lager:error(
               "[create:~s] Failed to create with error: ~p",

@@ -79,6 +79,10 @@ fi
 imgadm update
 [ -d /var/imgadm/images ] || mkdir -p /var/imgadm/images
 
+
+
+[ -d /opt/chunter/share ] && rm -r /opt/chunter/share
+
 (cd "$DST"; uudecode -p "$DIR/$BASE"| tar xf -)
 mkdir -p /var/log/chunter
 
