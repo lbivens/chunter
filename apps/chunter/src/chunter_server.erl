@@ -321,6 +321,8 @@ handle_info(update_services, State=#state{
                                       name=Host,
                                       services = OldServices
                                      }) ->
+    %% We also update the memory while we are at it.
+    update_mem(),
     case {chunter_smf:update(OldServices), OldServices} of
         {{ok, ServiceSet, Changed}, []} ->
             lager:debug("[GZ] Initializing ~p Services.",
