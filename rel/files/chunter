@@ -169,6 +169,14 @@ case "$1" in
             exit $ES
         fi
         ;;
+    import)
+        shift
+        $NODETOOL rpc chunter_console import_dataset $1
+        ES=$?
+        if [ "$ES" -ne 0 ]; then
+            exit $ES
+        fi
+        ;;
     update_memory)
         shift
         $NODETOOL rpc chunter_console update_mem
@@ -303,7 +311,8 @@ case "$1" in
         exec $CMD -- ${1+"$@"}
         ;;
     *)
-        echo "Usage: $SCRIPT {start|foreground|stop|restart|reboot|ping|console|console_clean|attach|remote_console|upgrade}"
+        echo "Usage: $SCRIPT {start|foreground|stop|restart|reboot|ping|console|console_clean|attach|remote_console|upgrade"
+        echo "                update_mem|connections|import}"
         exit 1
         ;;
 esac
