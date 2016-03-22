@@ -36,8 +36,7 @@ connections([]) ->
 import_dataset([UUIDs]) ->
     UUID = list_to_binary(UUIDs),
     io:format("Importing dataset ~s, this can take a moment.~n", [UUID]),
-    chunter_dataset_srv:install(
-      <<"9b88668a-a4b6-11e3-aac5-1b2e26565b4a">>, undefined).
+    chunter_dataset_srv:install(UUID, undefined).
 
 update_mem([]) ->
     io:format("Updating memory.~n", []),
