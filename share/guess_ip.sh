@@ -3,7 +3,7 @@
 . /usbkey/config
 
 echo "[00] The guesswork starts."
-conf_admin_mac=$(echo "$admin_nic" | sed 's/00/0/g')
+conf_admin_mac=$(echo "$admin_nic" | sed 's/0\([0-9]\)/0?\1/g')
 echo "[01] The conf_admin_mac is '$conf_admin_mac'."
 
 case "$conf_admin_mac" in
@@ -12,7 +12,7 @@ case "$conf_admin_mac" in
         echo "[02] Looks like a aggr, so nic == mac"
         ;;
     *)
-        conf_admin_nic=$(dladm show-phys -m -o LINK,ADDRESS | grep "$conf_admin_mac" | awk '{print $1}')
+        conf_admin_nic=$(dladm show-phys -m -o LINK,ADDRESS | /usr/bin/egrep "$conf_admin_mac" | awk '{print $1}')
         echo "[02] Looks like a normal nic, so '$conf_admin_mac' => '$conf_admin_nic'"
         ;;
 esac
