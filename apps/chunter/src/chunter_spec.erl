@@ -341,7 +341,7 @@ create_update(Original, Package, Config) ->
     Type = brand_to_type(jsxd:get(<<"brand">>, <<"joyent">>, Original)),
     Result = case Type of
                  kvm ->
-                     {ok, CPUCap} = jsxd:get(<<"cpu_cap">>, Base),
+                     {ok, CPUCap} = jsxd:get(<<"cpu_cap">>, Base0),
                      VCPUs = ceiling(CPUCap/100.0),
                      Base1 = jsxd:thread([{set, <<"ram">>, Ram},
                                           {set, <<"vcpus">>, VCPUs},
