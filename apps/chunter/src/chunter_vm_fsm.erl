@@ -1581,6 +1581,7 @@ howl_update(UUID, Data) ->
                         {<<"data">>, Data}]).
 
 do_create(UUID, CreateJSON, VMSpec) ->
+    change_state(UUID, <<"creating">>),
     case chunter_vmadm:create(UUID, CreateJSON) of
         ok ->
             lager:debug(
