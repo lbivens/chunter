@@ -350,6 +350,7 @@ initialized({create, Package, Dataset, VMSpec},
                 E ->
                     lager:error("[create:~s] Dataset import failed with: ~p",
                                 [UUID, E]),
+                    ls_vm:creating(UUID, false),
                     change_state(UUID, <<"failed">>),
                     {stop, normal, State}
             end
@@ -403,6 +404,9 @@ initialized({restore, SnapID, Options},
                            [{<<"uuid">>, UUID}]}]),
             restoring_backup(next, State1);
         E ->
+            R = chunter_lock:release(UUID),
+            lager:debug("[creating:~s] Log released after failure: ~p.",
+                [UUID, R]),
             {next_state, E, initialized, State}
     end;
 
