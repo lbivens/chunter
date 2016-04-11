@@ -22,14 +22,14 @@
 │     └─ quickrand─1.5.1
 ├─ jsx─1.4.5
 ├─ jsxd─0.1.10
-├─ libchunter─0.1.45
-├─ libhowl─0.1.32
-│  └─ mdns_client_lib─0.1.33
+├─ libchunter─0.1.46
+├─ libhowl─0.1.35
+│  └─ mdns_client_lib─0.1.39
 │     ├─ mdns_client─0.1.7
-│     └─ pooler─1.4.0
-├─ libsnarl─0.3.40
+│     └─ pooler─1.5.0
+├─ libsnarl─0.3.45
 │  └─ oauth2─0.6.1
-├─ libsniffle─0.3.42
+├─ libsniffle─0.3.46
 ├─ ranch─1.1.0
-├─ recon─2.2.1
+├─ recon─2.3.1
 └─ smurf─0.1.3
