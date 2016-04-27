@@ -38,7 +38,7 @@ do
             UPGRADE=1; shift;;
         -f)
             FORCE=$1; shift;;
-        -h|-?)
+        -h|'-?')
                 cat <<EOF
 update [-uf] [-b dev|rel] [-v <version>]
   -u              Forces a upgrade, will jump to a new versions.
