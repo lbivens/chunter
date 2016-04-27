@@ -6,13 +6,16 @@ compile: $(REBAR) .git/hooks/pre-commit
 .git/hooks/pre-commit: hooks/pre-commit
 	cp hooks/pre-commit .git/hooks
 
-pre-commit: lint xref dialyzer test
+pre-commit: test-scripts lint xref dialyzer test
 
 dialyzer: $(REBAR)
 	$(REBAR) dialyzer
 
 xref: $(REBAR)
 	$(REBAR) xref
+
+test-scripts:
+	for i in rel/files/*; do (head -1 $$i | grep -v sh > /dev/null) || bash -n $$i || exit 1; done;
 
 test: $(REBAR)
 	$(REBAR) eunit

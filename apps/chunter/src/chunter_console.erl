@@ -7,6 +7,10 @@
 -ignore_xref([update_mem/1]).
 
 
+-export([import_dataset/1]).
+-ignore_xref([import_dataset/1]).
+
+
 connections(["snarl"]) ->
     io:format("Snarl endpoints.~n"),
     print_endpoints(libsnarl:servers());
@@ -29,8 +33,15 @@ connections([]) ->
             error
     end.
 
+import_dataset([UUIDs]) ->
+    UUID = list_to_binary(UUIDs),
+    io:format("Importing dataset ~s, this can take a moment.~n", [UUID]),
+    chunter_dataset_srv:install(UUID, undefined).
+
 update_mem([]) ->
+    io:format("Updating memory.~n", []),
     chunter_server:update_mem().
+
 
 print_endpoints(Es) ->
     io:format("Hostname            "

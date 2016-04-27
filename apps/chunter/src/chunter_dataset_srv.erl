@@ -72,9 +72,14 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({install, DatasetUUID, UUID}, _From, State) ->
-    install_image(DatasetUUID, UUID),
-    Reply = ok,
-    {reply, Reply, State};
+    try install_image(DatasetUUID, UUID) of
+        Reply ->
+            {reply, Reply, State}
+    catch
+        E1:E2 ->
+            lager:error("Dataset import failed: ~p:~p", [E1, E2]),
+            {reply, {error, E1}, State}
+    end;
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.

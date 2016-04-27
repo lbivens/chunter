@@ -342,8 +342,6 @@ initialized({create, Package, Dataset, VMSpec},
                     %% running already when the vmadm is doing it's work
                     chunter_zlogin:start(UUID, ZoneType),
                     do_create(UUID, VMData, VMSpec),
-                    update_timeout(UUID),
-                    chunter_vmadm:start(UUID),
                     {next_state, creating,
                      State#state{type = Type,
                                  zone_type = ZoneType,
@@ -352,6 +350,7 @@ initialized({create, Package, Dataset, VMSpec},
                 E ->
                     lager:error("[create:~s] Dataset import failed with: ~p",
                                 [UUID, E]),
+                    ls_vm:creating(UUID, false),
                     change_state(UUID, <<"failed">>),
                     {stop, normal, State}
             end
@@ -405,6 +404,9 @@ initialized({restore, SnapID, Options},
                            [{<<"uuid">>, UUID}]}]),
             restoring_backup(next, State1);
         E ->
+            R = chunter_lock:release(UUID),
+            lager:debug("[creating:~s] Log released after failure: ~p.",
+                [UUID, R]),
             {next_state, E, initialized, State}
     end;
 
@@ -1583,12 +1585,15 @@ howl_update(UUID, Data) ->
                         {<<"data">>, Data}]).
 
 do_create(UUID, CreateJSON, VMSpec) ->
+    change_state(UUID, <<"creating">>),
     case chunter_vmadm:create(UUID, CreateJSON) of
         ok ->
             lager:debug(
               "[create:~s] Done creating continuing on.", [UUID]),
             Org = jsxd:get(<<"owner">>, <<>>, VMSpec),
-            confirm_create(UUID, Org);
+            confirm_create(UUID, Org),
+            update_timeout(UUID),
+            chunter_vmadm:start(UUID);
         {error, E} ->
             lager:error(
               "[create:~s] Failed to create with error: ~p",
