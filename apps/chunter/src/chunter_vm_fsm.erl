@@ -39,6 +39,7 @@
          start/1,
          update_fw/1,
          delete/1,
+         store/1,
          transition/2,
          update/3,
          backup/3,
@@ -146,6 +147,11 @@ transition(UUID, State) ->
 
 delete(UUID) ->
     gen_fsm:send_all_state_event({global, {vm, UUID}}, delete).
+
+-spec store(UUID::fifo:uuid()) -> ok.
+
+store(UUID) ->
+    gen_fsm:send_all_state_event({global, {vm, UUID}}, store).
 
 -spec force_state(UUID::fifo:uuid(), State::fifo:vm_state()) -> ok.
 
@@ -397,11 +403,7 @@ initialized({restore, SnapID, Options},
             State1 = State#state{orig_state=loading,
                                  type = Type, zone_type = ZoneType,
                                  args={SnapID, Options, Path, Toss}},
-            libhowl:send(<<"command">>,
-                         [{<<"event">>, <<"vm-restored">>},
-                          {<<"uuid">>, fifo_utils:uuid()},
-                          {<<"data">>,
-                           [{<<"uuid">>, UUID}]}]),
+            vm_event(UUID,  <<"vm-restored">>),
             restoring_backup(next, State1);
         E ->
             R = chunter_lock:release(UUID),
@@ -721,6 +723,22 @@ handle_event(delete, _StateName, State = #state{uuid = UUID}) ->
             lager:info("Deleting ~s successfull, letting sniffle know.",
                        [UUID]),
             ls_vm:delete(UUID)
+    end,
+    wait_for_delete(UUID),
+    chunter_zlogin:stop(UUID),
+    {stop, normal, State};
+
+handle_event(store, _StateName, State = #state{uuid = UUID}) ->
+    lager:debug("[~s] Calling delete to store VM.", [State#state.uuid]),
+    case load_vm(UUID) of
+        {error, not_found} ->
+            ok;
+        _VM ->
+            chunter_vmadm:delete(UUID),
+            lager:info("Deleting ~s successfull, letting sniffle know.",
+                       [UUID]),
+            vm_event(UUID,  <<"vm-stored">>),
+            ls_vm:state(UUID, <<"stored">>)
     end,
     wait_for_delete(UUID),
     chunter_zlogin:stop(UUID),
@@ -1612,3 +1630,10 @@ update_timeout(UUID) ->
     T = erlang:system_time(milli_seconds) + 60000,
     chunter_vmadm:update(UUID, [{<<"set_internal_metadata">>,
                                  [{<<"docker:wait_for_attach">>, T}]}]).
+
+vm_event(UUID, Event) ->
+    libhowl:send(<<"command">>,
+                 [{<<"event">>, Event},
+                  {<<"uuid">>, fifo_utils:uuid()},
+                  {<<"data">>,
+                   [{<<"uuid">>, UUID}]}]).
