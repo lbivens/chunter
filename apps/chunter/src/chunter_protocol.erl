@@ -258,6 +258,10 @@ handle_message({machines, delete, UUID}, State) when is_binary(UUID) ->
     chunter_vm_fsm:delete(UUID),
     {stop, State};
 
+handle_message({machines, store, UUID}, State) when is_binary(UUID) ->
+    chunter_vm_fsm:store(UUID),
+    {stop, State};
+
 handle_message({service, Action, Service}, State)
   when is_binary(Service),
        (Action =:= enable orelse Action =:= disable orelse Action =:= clear
