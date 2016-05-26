@@ -87,7 +87,7 @@ mkdir -p /var/log/chunter
 
 
 ## Generate all the needed values
-conf_admin_mac=$(echo "$admin_nic" | sed 's/0\([0-9]\)/0?\1/g')
+conf_admin_mac=$(echo "$admin_nic" | sed 's/0\([0-9a-f]\)/0?\1/g')
 case "$conf_admin_mac" in
     aggr*)
         conf_admin_nic="$conf_admin_mac"
