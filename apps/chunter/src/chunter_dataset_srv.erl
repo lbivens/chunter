@@ -151,7 +151,12 @@ install_image(DatasetUUID, VM) ->
             lager:debug("found.", []),
             ok;
         _ ->
-            {ok, {S3Host, S3Port, AKey, SKey, Bucket}} = libsniffle:s3(image),
+            do_download(DatasetUUID, VM)
+    end.
+
+do_download(DatasetUUID, VM) ->
+    case libsniffle:s3(image) of
+        {ok, {S3Host, S3Port, AKey, SKey, Bucket}} ->
             Chunk = case application:get_env(chunter, download_chunk) of
                         undefined ->
                             5242880;
@@ -182,7 +187,10 @@ install_image(DatasetUUID, VM) ->
                     finish_image(DatasetUUID);
                 E ->
                     E
-            end
+            end;
+        {ok, no_s3} ->
+            {ok, DatasetUUID} = chunter_imgadm:import(DatasetUUID),
+            ok
     end.
 
 finish_image(UUID) ->
