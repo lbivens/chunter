@@ -1,4 +1,4 @@
--module(chunter_docker).
+-module(chunter_imgadm).
 
 -export([import/1, get/1]).
 
@@ -14,7 +14,7 @@ import(Image) ->
         {ok, <<"Image ", UUID:36/binary, _/binary>>} ->
             {ok, UUID};
         Error ->
-            lager:error("[docker] Could not import image ~s: ~p",
+            lager:error("[imgadm] Could not import image ~s: ~p",
                         [Image, Error]),
             Error
     end.

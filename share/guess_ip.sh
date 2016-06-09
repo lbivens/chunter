@@ -3,7 +3,7 @@
 . /usbkey/config
 
 echo "[00] The guesswork starts."
-conf_admin_mac=$(echo "$admin_nic" | sed 's/0\([0-9]\)/0?\1/g')
+conf_admin_mac=$(echo "$admin_nic" | sed 's/0\([0-9a-f]\)/0?\1/g')
 echo "[01] The conf_admin_mac is '$conf_admin_mac'."
 
 case "$conf_admin_mac" in
