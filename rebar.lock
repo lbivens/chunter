@@ -8,7 +8,7 @@
        {ref,"bc48604f7a74440da66aa7dba95a3bf634fdf138"}},
   0},
  {<<"erltrace">>,{pkg,<<"erltrace">>,<<"0.1.4">>},0},
- {<<"fifo_dt">>,{pkg,<<"fifo_dt">>,<<"0.1.68">>},0},
+ {<<"fifo_dt">>,{pkg,<<"fifo_dt">>,<<"0.1.69">>},0},
  {<<"fifo_lager">>,{pkg,<<"fifo_lager">>,<<"0.1.3">>},0},
  {<<"fifo_s3">>,{pkg,<<"fifo_s3">>,<<"0.2.2">>},0},
  {<<"fifo_spec">>,{pkg,<<"fifo_spec">>,<<"0.1.27">>},0},
