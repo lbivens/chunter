@@ -1095,11 +1095,15 @@ finish_snapshot(_VM, _SnapID, [backup], ok) ->
     ok;
 finish_snapshot(VM, SnapID, _, ok) ->
     snap_state(VM, SnapID, <<"completed">>),
+    {ok, VmData} = ls_vm:get(VM),
+    Snaps = ft_vm:snapshots(VmData),
+    TheSnap = proplists:get_value(SnapID, Snaps),
     libhowl:send(VM,
                  [{<<"event">>, <<"snapshot">>},
                   {<<"data">>,
-                   [{<<"action">>, <<"completed">>},
-                    {<<"uuid">>, SnapID}]}]),
+                   [{<<"uuid">>, SnapID},
+                    {<<"action">>, <<"completed">>}] ++
+                   [{<<"data">>, TheSnap}]}]),
     ok;
 
 finish_snapshot(_VM, _SnapID, _, error) ->
