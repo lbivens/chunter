@@ -59,7 +59,7 @@ case $BRANCH in
     dev)
         if [ "x${TARGET_VER}x" != "xx" ]
         then
-            echo "Error: -v is only supported for relase!"
+            echo "Error: -v is only supported for release!"
         fi
         ;;
     rel)
@@ -125,7 +125,7 @@ then
     fi
 elif [ "${CUR_VER}" = "${CHUNTER_VER}" ]
 then
-    echo "No updates availalbe."
+    echo "No updates available."
     GET_UPDATE="false";
 else
     GET_UPDATE="true";
