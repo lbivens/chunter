@@ -1,4 +1,5 @@
 .PHONY: deps rel package quick-test tree
+APP=chunter
 
 all: apps/chunter/priv/zonedoor version_header compile 
 

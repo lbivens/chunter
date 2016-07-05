@@ -2,7 +2,7 @@
 
 [ -f /usbkey/config ] && . /usbkey/config
 
-TESTED_VERSIONS=20151001T070028Z\|20151104T185720Z\|20160204T080230Z\|20160204T173339Z\|20160317T000621Z\|20160504T205801Z
+TESTED_VERSIONS=20151001T070028Z\|20151104T185720Z\|20160204T080230Z\|20160204T173339Z\|20160317T000621Z\|20160504T205801Z\|20160512T071413Z
 BAD_VERSIONS=2012\|2013\|2014\|2015\|201601\|201602\|201603\|2016040\|2016041
 
 ## 201601\|201602\|201603\|2016040\|2016041 - https://help.joyent.com/entries/99083238--UPDATED-Security-Advisory-Docker-DTrace-and-MAC-Protection-Vulnerabilities
@@ -87,7 +87,7 @@ mkdir -p /var/log/chunter
 
 
 ## Generate all the needed values
-conf_admin_mac=$(echo "$admin_nic" | sed 's/0\([0-9]\)/0?\1/g')
+conf_admin_mac=$(echo "$admin_nic" | sed 's/0\([0-9a-f]\)/0?\1/g')
 case "$conf_admin_mac" in
     aggr*)
         conf_admin_nic="$conf_admin_mac"

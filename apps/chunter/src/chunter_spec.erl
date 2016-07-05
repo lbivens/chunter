@@ -473,7 +473,7 @@ docker_spec(Base, Dataset, OwnerData) ->
         {ok, _} ->
             Base3;
         _ ->
-            {ok, Manifest} = chunter_docker:get(ImageID),
+            {ok, Manifest} = chunter_imgadm:get(ImageID),
             ManifestCmdPath = [<<"manifest">>, <<"tags">>, <<"docker:config">>,
                                <<"Cmd">>],
             case jsxd:get(ManifestCmdPath, Manifest) of

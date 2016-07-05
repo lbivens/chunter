@@ -263,11 +263,17 @@ update(UUID, Data) ->
     lager:debug("vmadm:cmd - ~s.", [Cmd]),
     Port = port_json(Cmd, Data),
     port_command(Port, "\nEOF\n"),
+    wait_for_result(Port, UUID).
+
+wait_for_result(Port, UUID) ->
     receive
         {Port, {data, {eol, Data}}} ->
-            lager:debug("[vmadm] ~s", [Data]);
+            lager:debug("[vmadm] ~s", [Data]),
+            % take good care of the `exit_status` message
+            wait_for_result(Port, UUID);
         {Port, {data, Data}} ->
-            lager:debug("[vmadm] ~s", [Data]);
+            lager:debug("[vmadm] ~s", [Data]),
+            wait_for_result(Port, UUID);
         {Port, {exit_status, 0}} ->
             chunter_server:update_mem(),
             chunter_vm_fsm:load(UUID);
