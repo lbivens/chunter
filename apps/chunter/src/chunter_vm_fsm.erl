@@ -356,6 +356,10 @@ initialized({create, Package, Dataset, VMSpec},
                 E ->
                     lager:error("[create:~s] Dataset import failed with: ~p",
                                 [UUID, E]),
+                    ls_vm:log(UUID, <<"Failed to import Dataset, please check "
+                                      "your image storage configuration. "
+                                      "Please check the chunter logs for "
+                                      "details.">>),
                     ls_vm:creating(UUID, false),
                     change_state(UUID, <<"failed">>),
                     {stop, normal, State}
@@ -1620,6 +1624,8 @@ do_create(UUID, CreateJSON, VMSpec) ->
             lager:error(
               "[create:~s] Failed to create with error: ~p",
               [UUID, E]),
+            ls_vm:log(UUID, <<"vmadm failed to create the zone. Please check "
+                              "the chunter logs for details">>),
             change_state(UUID, <<"failed">>),
             delete(UUID)
     end.
