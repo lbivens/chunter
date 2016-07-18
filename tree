@@ -11,7 +11,7 @@
 ├─ fifo_lager─0.1.4
 │  ├─ lager_graylog─0.1.1
 │  └─ lager_logstash_backend─0.1.1
-├─ fifo_s3─0.2.4
+├─ fifo_s3─0.2.5
 │  ├─ base16─1.0.0
 │  ├─ erlcloud─0.13.2
 │  │  └─ lhttpc─1.4.0
