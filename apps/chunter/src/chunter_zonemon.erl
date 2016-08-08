@@ -125,7 +125,10 @@ handle_info({_Port, {data, {eol, Data}}},
         {_UUID, <<"crate">>} ->
             ok;
         {UUID, Action} ->
-            chunter_vm_fsm:transition(UUID, simplifie_state(Action))
+            chunter_vm_fsm:transition(UUID, simplifie_state(Action)),
+            %% todo: this is ugly but might be required as the
+            %% update can fire really really rapidly
+            timer:sleep(200)
     end,
     {noreply, State};
 
