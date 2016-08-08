@@ -1366,7 +1366,8 @@ change_state(UUID, State, true) ->
     State;
 
 change_state(UUID, State, false) ->
-    ls_vm:state(UUID, State),
+    lager:debug("[~s] Changing state: ~s", [UUID, State]),
+    ok = ls_vm:state(UUID, State),
     ls_vm:get(UUID),
     libhowl:send(UUID, [{<<"event">>, <<"state">>}, {<<"data">>, State}]),
     State.
