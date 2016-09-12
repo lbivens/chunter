@@ -742,7 +742,7 @@ handle_event(store, _StateName, State = #state{uuid = UUID}) ->
             lager:info("Deleting ~s successfull, letting sniffle know.",
                        [UUID]),
             vm_event(UUID,  <<"vm-stored">>),
-            ls_vm:state(UUID, <<"stored">>)
+            ensure_state(UUID, <<"stored">>)
     end,
     wait_for_delete(UUID),
     chunter_zlogin:stop(UUID),
@@ -1367,10 +1367,23 @@ change_state(UUID, State, true) ->
 
 change_state(UUID, State, false) ->
     lager:debug("[~s] Changing state: ~s", [UUID, State]),
-    ok = ls_vm:state(UUID, State),
-    ls_vm:get(UUID),
+    ensure_state(UUID, State),
     libhowl:send(UUID, [{<<"event">>, <<"state">>}, {<<"data">>, State}]),
     State.
+ensure_state(UUID, State) ->
+    ensure_state(UUID, State, 10).
+
+ensure_state(UUID, State, 0) ->
+    lager:error("[~s] Could not set state to ~s", [UUID, State]);
+ensure_state(UUID, State, N) ->
+    ok = ls_vm:state(UUID, State),
+    {ok, VM} =ls_vm:get(UUID),
+    case ft_vm:state(VM) of
+        State ->
+            ok;
+        _ ->
+            ensure_state(UUID, State, N - 1)
+    end.
 
 -spec binary_to_atom(B::binary()) -> A::atom().
 binary_to_atom(B) ->
