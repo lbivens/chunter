@@ -25,7 +25,7 @@
 ├─ fifo_spec─0.1.27
 ├─ fifo_utils─0.1.22
 │  └─ uuid─1.5.1
-│     └─ quickrand─1.5.2-rc1
+│     └─ quickrand─1.5.2
 ├─ jsx─1.4.5
 ├─ jsxd─0.1.10
 ├─ libchunter─0.1.48
@@ -37,5 +37,5 @@
 │  └─ oauth2─0.6.1
 ├─ libsniffle─0.3.47
 ├─ ranch─1.1.0
-├─ recon─2.3.1
+├─ recon─2.3.2
 └─ smurf─0.1.3
