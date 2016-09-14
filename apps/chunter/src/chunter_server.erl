@@ -289,8 +289,8 @@ handle_cast(connect, #state{name = Host,
             ls_hypervisor:networks(Host, Networks1),
             ls_hypervisor:etherstubs(Host, Etherstub1)
     end,
-
     ls_hypervisor:virtualisation(Host, Caps),
+    register_vms(),
     {noreply, State#state{
                 connected = true
                }};
@@ -473,3 +473,11 @@ mem() ->
         string:to_integer(
           os:cmd("/usr/sbin/prtconf | grep Memor | awk '{print $3}'")),
     {TotalMem, ProvMem}.
+
+register_vms() ->
+    spawn(fun () ->
+                  [begin
+                       chunter_vm_fsm:load(UUID),
+                       timer:sleep(1000)
+                   end || #{uuid := UUID} <- chunter_zone:list_()]
+          end).
