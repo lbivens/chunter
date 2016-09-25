@@ -134,8 +134,6 @@ delete(UUID) ->
 
 -spec info(UUID::fifo:uuid()) -> fifo:config_list().
 
-%% JSX is spected badly for the jsx:decode so we ignore this function!
--dialyzer({nowarn_function, decode_info/1}).
 info(UUID) ->
     case chunter_utils:system() of
         smartos ->
@@ -151,11 +149,12 @@ decode_info("Unable" ++ _) ->
     {error, no_info};
 
 decode_info(JSON) ->
-    case jsx:decode(list_to_binary(JSON)) of
-        {incomplete, _} ->
-            {error, no_info};
+    try jsone:decode(list_to_binary(JSON)) of
         R ->
             {ok, R}
+    catch
+        _:_ ->
+            {error, no_info}
     end.
 
 -spec stop(UUID::fifo:uuid()) -> list().
@@ -329,5 +328,5 @@ relock(Lock) ->
 port_json(Cmd, JSON) ->
     Port = open_port({spawn, Cmd}, [use_stdio, binary, {line, 1000},
                                     stderr_to_stdout, exit_status]),
-    port_command(Port, jsx:encode(JSON)),
+    port_command(Port, jsone:encode(JSON)),
     Port.

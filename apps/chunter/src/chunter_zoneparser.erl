@@ -104,7 +104,7 @@ load(VM) ->
             Res;
         true ->
             {ok, Routes} = file:read_file(RouteFile),
-            RoutesJSON = jsx:decode(Routes),
+            RoutesJSON = jsone:decode(Routes),
             jsxd:set(<<"routes">>, RoutesJSON, Res)
     end.
 

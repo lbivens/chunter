@@ -19,10 +19,10 @@
                OwnerData::fifo:config()) -> fifo:vm_config().
 
 to_vmadm(Package, Dataset, OwnerData) ->
-    case lists:keyfind(<<"type">>, 1, Dataset) of
-        {<<"type">>, <<"kvm">>} ->
+    case jsxd:get(<<"type">>, Dataset) of
+        {ok, <<"kvm">>} ->
             generate_spec(Package, Dataset, OwnerData);
-        {<<"type">>, <<"zone">>} ->
+        {ok, <<"zone">>} ->
             generate_spec(Package, Dataset, OwnerData)
     end.
 
@@ -319,7 +319,7 @@ create_update(_, undefined, Config) ->
              _ ->
                  Result
          end,
-    lager:debug("Generated update: ~s.~n", [jsx:encode(R1)]),
+    lager:debug("Generated update: ~s.~n", [jsone:encode(R1)]),
     R1;
 
 create_update(Original, Package, Config) ->
@@ -352,8 +352,8 @@ create_update(Original, Package, Config) ->
                          {ok, Path} ->
 
                              jsxd:set(<<"update_disks">>,
-                                      [[{<<"path">>, Path},
-                                        {<<"size">>, Q * 1024}]],
+                                      [#{<<"path">> => Path,
+                                         <<"size">> => Q * 1024}],
                                       Base1);
                          _ ->
                              Base1
@@ -478,7 +478,7 @@ docker_spec(Base, Dataset, OwnerData) ->
                                <<"Cmd">>],
             case jsxd:get(ManifestCmdPath, Manifest) of
                 {ok, Cmd} ->
-                    CmdS = jsx:encode(Cmd),
+                    CmdS = jsone:encode(Cmd),
                     jsxd:set([<<"internal_metadata">>,
                               <<"docker:cmd">>], CmdS, Base3);
                 _ ->
@@ -487,11 +487,11 @@ docker_spec(Base, Dataset, OwnerData) ->
     end.
 
 encode_docker_metadata(Base, DockerData) ->
-    lists:foldl(fun ({K, V}, Acc) ->
-                        PrefixedName = <<"docker:", K/binary>>,
-                        Path = [<<"internal_metadata">>, PrefixedName],
-                        jsxd:set(Path, V, Acc)
-                end, Base, DockerData).
+    jsxd:fold(fun (K, V, Acc) ->
+                      PrefixedName = <<"docker:", K/binary>>,
+                      Path = [<<"internal_metadata">>, PrefixedName],
+                      jsxd:set(Path, V, Acc)
+              end, Base, DockerData).
 
 perhaps_set(Key, Src, Target, Obj) ->
     case jsxd:get(Key, Src) of
@@ -502,9 +502,9 @@ perhaps_set(Key, Src, Target, Obj) ->
     end.
 
 perhaps_map(Src, Obj, Mapping) ->
-    lists:foldl(fun({Key, Target}, Acc) ->
-                        perhaps_set(Key, Src, Target, Acc)
-                end, Obj, Mapping).
+    jsxd:fold(fun(Key, Target, Acc) ->
+                      perhaps_set(Key, Src, Target, Acc)
+              end, Obj, Mapping).
 
 dflt(undefined, Dflt) ->
     Dflt;

@@ -830,23 +830,23 @@ handle_sync_event({door, Ref, Data}, _From, StateName,
 handle_sync_event({door, Ref, Data}, _From, StateName,
                   State = #state{api_ref=Ref, uuid=UUID}) ->
     lager:info("[zone:~s] API: ~s", [UUID, Data]),
-    try jsx:decode(Data) of
+    try jsone:decode(Data) of
         JSON ->
             JSON1 = jsxd:from_list(JSON),
             Reply = case chunter_api:call(UUID, JSON1) of
                         {ok, D} ->
-                            Bin = jsx:encode(D),
+                            Bin = jsone:encode(D),
                             {ok, <<$1, Bin/binary>>};
                         {error, E} ->
                             lager:warning("[zdoor] error: ~p", [E]),
-                            RJSON = jsx:encode([{error, list_to_binary(E)}]),
+                            RJSON = jsone:encode([{error, list_to_binary(E)}]),
                             {ok, <<$0, RJSON/binary>>}
                     end,
             {reply, Reply, StateName, State}
     catch
         _:_ ->
             lager:warning("[zdoor] error: ~p", [Data]),
-            RJSON = jsx:encode([{error,  <<"format error: ", Data/binary>>}]),
+            RJSON = jsone:encode([{error,  <<"format error: ", Data/binary>>}]),
             Reply = {ok, <<$0, RJSON/binary>>},
             {reply, Reply, StateName, State}
     end;

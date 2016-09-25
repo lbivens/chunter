@@ -7,7 +7,7 @@
                   stdlib,
                   sasl,
                   fifo_lager,
-                  jsx,
+                  jsone,
                   jsxd,
                   inets,
                   erlsom,
