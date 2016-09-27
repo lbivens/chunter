@@ -277,11 +277,11 @@ backup_update(VM, SnapID, K, V, Opts) when is_list(K) ->
             Event = proplists:get_value(event, Opts, <<"backup">>),
             ls_vm:set_backup(VM, [{[SnapID | K], V}]),
             libhowl:send(VM,
-                         [{<<"event">>, Event},
-                          {<<"data">>,
-                           [{<<"action">>, <<"update">>},
-                            {<<"data">>, [{K, V}]},
-                            {<<"uuid">>, SnapID}]}]);
+                         #{<<"event">> => Event,
+                           <<"data">> => #{
+                               <<"action">> => <<"update">>,
+                               <<"data">> => maps:from_list([{K, V}]),
+                               <<"uuid">> => SnapID}});
         true ->
             ok
     end;

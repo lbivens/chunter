@@ -448,8 +448,8 @@ update_services(UUID, Changed) ->
         [] ->
             ok;
         Changed1 ->
-            libhowl:send(UUID, [{<<"event">>, <<"services">>},
-                                {<<"data">>, Changed1}])
+            libhowl:send(UUID, #{<<"event">> => <<"services">>,
+                                 <<"data">> => Changed1})
     end.
 
 mem() ->
