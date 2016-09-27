@@ -56,27 +56,27 @@ upload(<<_:1/binary, P/binary>>, VM, SnapID, Options) ->
 
 %% Wish we could match on binary AccIn in the haed sadly erlang doesn't allow
 %% that :/
-upload_to_cloud(UUID, SnapID, Port, Upload, AccIn, Chunk, Size, Ctx, Target,
+upload_to_cloud(VM, SnapID, Port, Upload, AccIn, Chunk, Size, Ctx, Target,
                 Options) when byte_size(AccIn) >= Chunk ->
     <<MB:Chunk/binary, Acc/binary>> = AccIn,
     case fifo_s3_upload:part(Upload, binary:copy(MB)) of
         ok ->
             lager:debug("Uploading: ~p MB.", [round(Size/1024/1024)]),
-            update_size(UUID, SnapID, Target, Size, Options),
-            upload_to_cloud(UUID, SnapID, Port, Upload, Acc, Chunk,
+            update_size(VM, SnapID, Target, Size, Options),
+            upload_to_cloud(VM, SnapID, Port, Upload, Acc, Chunk,
                             Size, Ctx, Target, Options);
         {error, E} ->
-            fail_upload(UUID, SnapID, Upload, Options, E),
+            fail_upload(VM, SnapID, Upload, Options, E),
             {error, 3, E}
     end;
 
-upload_to_cloud(UUID, SnapID, Port, Upload, AccIn, Chunk, Size, Ctx, Target,
+upload_to_cloud(VM, SnapID, Port, Upload, AccIn, Chunk, Size, Ctx, Target,
                 Options) ->
     receive
         {Port, {data, Data}} ->
             Size1 = Size + byte_size(Data),
             Ctx1 = crypto:hash_update(Ctx, Data),
-            upload_to_cloud(UUID, SnapID, Port, Upload,
+            upload_to_cloud(VM, SnapID, Port, Upload,
                             <<AccIn/binary, Data/binary>>, Chunk, Size1,
                             Ctx1, Target, Options);
         {Port, {exit_status, 0}} ->
@@ -91,30 +91,30 @@ upload_to_cloud(UUID, SnapID, Port, Upload, AccIn, Chunk, Size, Ctx, Target,
                     fifo_s3_upload:done(Upload),
                     lager:debug("Upload complete: ~p MB.",
                                 [round(Size/1024/1024)]),
-                    update_size(UUID, SnapID, Target, Size, Options),
+                    update_size(VM, SnapID, Target, Size, Options),
                     Digest = base16:encode(crypto:hash_final(Ctx)),
-                    backup_update(UUID, SnapID,
+                    backup_update(VM, SnapID,
                                   [<<"files">>, Target, <<"sha1">>],
                                   Digest, Options),
                     M = io_lib:format("Uploaded ~s with a total size of"
-                                      " done: ~p", [UUID, Size]),
+                                      " done: ~p", [VM, Size]),
 
                     {ok, list_to_binary(M), Digest};
                 {error, E} ->
-                    fail_upload(UUID, SnapID, Upload, Options, E),
+                    fail_upload(VM, SnapID, Upload, Options, E),
                     {error, 2, E}
             end;
         {Port, {exit_status, S}} ->
-            fail_upload(UUID, SnapID, Upload, Options, S),
+            fail_upload(VM, SnapID, Upload, Options, S),
             {error, S, <<"upload failed">>}
     end.
-fail_upload(UUID, SnapID, Upload, Options, Error) ->
+fail_upload(VM, SnapID, Upload, Options, Error) ->
     fifo_s3_upload:abort(Upload),
     lager:error("Upload error: ~p", [Error]),
-    backup_update(UUID, SnapID, <<"state">>, <<"failed">>, Options).
+    backup_update(VM, SnapID, <<"state">>, <<"failed">>, Options).
 
-update_size(UUID, SnapID, Target, Size, Options) ->
-    backup_update(UUID, SnapID,
+update_size(VM, SnapID, Target, Size, Options) ->
+    backup_update(VM, SnapID,
                   [<<"files">>, Target, <<"size">>],
                   Size, Options).
 
@@ -271,16 +271,21 @@ mk_s3_conf(Options) ->
     S3Port = proplists:get_value(s3_port, Options),
     fifo_s3:make_config(AKey, SKey, S3Host, S3Port).
 
+%%    backup_update(VM, SnapID,
+%%                  [<<"files">>, Target, <<"size">>],
+%%                  Size, Options).
+
 backup_update(VM, SnapID, K, V, Opts) when is_list(K) ->
     case proplists:get_value(quiet, Opts, false) of
         false ->
             Event = proplists:get_value(event, Opts, <<"backup">>),
             ls_vm:set_backup(VM, [{[SnapID | K], V}]),
+            Data = jsxd:set(K, V, #{}),
             libhowl:send(VM,
                          #{<<"event">> => Event,
                            <<"data">> => #{
                                <<"action">> => <<"update">>,
-                               <<"data">> => maps:from_list([{K, V}]),
+                               <<"data">> => Data,
                                <<"uuid">> => SnapID}});
         true ->
             ok
