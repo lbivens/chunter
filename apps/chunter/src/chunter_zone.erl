@@ -20,8 +20,8 @@
 
 list() ->
     %% TODO: find a way to unify this!
-    [chunter_zoneparser:load([{<<"name">>, Name},
-                              {<<"uuid">>, UUID}]) ||
+    [chunter_zoneparser:load(#{<<"name">> => Name,
+                               <<"uuid">> => UUID}) ||
         #{name := Name, uuid := UUID} <- list_()].
 
 list_() ->
@@ -41,10 +41,10 @@ list_() ->
 -spec get(ZUUID::fifo:uuid()) -> fifo:vm_config() | {error, not_found}.
 
 get(ZUUID) ->
-    case [chunter_zoneparser:load([{<<"name">>, Name},
-                                   {<<"state">>, VMState},
-                                   {<<"zonepath">>, Path},
-                                   {<<"type">>, Type}]) ||
+    case [chunter_zoneparser:load(#{<<"name">> => Name,
+                                    <<"state">> => VMState,
+                                    <<"zonepath">> => Path,
+                                    <<"type">> => Type}) ||
              {_ID, Name, VMState, Path, _UUID, Type} <- get_raw(ZUUID)] of
         [VM | _] ->
             VM;

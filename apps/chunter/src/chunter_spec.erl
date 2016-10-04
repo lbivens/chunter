@@ -15,14 +15,17 @@
          create_update/3
         ]).
 
+-define(EMPTY, <<"00000000-0000-0000-0000-000000000000">>).
+
+
 -spec to_vmadm(Package::fifo:config(), Dataset::fifo:config(),
                OwnerData::fifo:config()) -> fifo:vm_config().
 
 to_vmadm(Package, Dataset, OwnerData) ->
-    case lists:keyfind(<<"type">>, 1, Dataset) of
-        {<<"type">>, <<"kvm">>} ->
+    case jsxd:get(<<"type">>, Dataset) of
+        {ok, <<"kvm">>} ->
             generate_spec(Package, Dataset, OwnerData);
-        {<<"type">>, <<"zone">>} ->
+        {ok, <<"zone">>} ->
             generate_spec(Package, Dataset, OwnerData)
     end.
 
@@ -65,18 +68,39 @@ generate_sniffle(In, _Type) ->
          <<"zfs_io_priority">>, <<"disk_driver">>, <<"vcpus">>,
          <<"nic_driver">>, <<"hostname">>, <<"autoboot">>, <<"created_at">>,
          <<"dns_domain">>, <<"resolvers">>, <<"ram">>, <<"uuid">>,
-         <<"cpu_shares">>, <<"max_swap">>, <<"kernel_version">>],
+         <<"cpu_shares">>, <<"max_swap">>, <<"kernel_version">>,
+         <<"indestructible_zoneroot">>, <<"indestructible_delegated">>,
+         <<"boot_timestamp">>, <<"datasets">>],
     Sniffle0 = jsxd:select(KeepKeys, In),
     jsxd:fold(fun translate_to_sniffle/3, Sniffle0, In).
 
+translate_to_sniffle(<<"owner_uuid">>, ?EMPTY, Obj) ->
+    Obj;
+translate_to_sniffle(<<"billing_uuid">>, ?EMPTY, Obj) ->
+    Obj;
+translate_to_sniffle(<<"billing_uuid">>, V, Obj) ->
+    Obj1 = jsxd:set(<<"owner">>, V, Obj),
+    case jsxd:get(<<"owner">>, Obj) of
+        {ok, Owner} ->
+            jsxd:set(<<"creator">>, Owner, Obj1);
+        _ ->
+            Obj1
+    end;
+translate_to_sniffle(<<"owner_uuid">>, V, Obj) ->
+    case jsxd:get(<<"owner">>, Obj) of
+        {ok, _} ->
+            jsxd:set(<<"creator">>, V, Obj);
+        _ ->
+            jsxd:set(<<"owner">>, V, Obj)
+    end;
 translate_to_sniffle(<<"internal_metadata">>, Int, Obj) ->
     jsxd:merge(Int, Obj);
 translate_to_sniffle(<<"dataset_uuid">>, V, Obj) ->
     jsxd:set(<<"dataset">>, V, Obj);
-translate_to_sniffle(<<"package_name">>, V, Obj) ->
-    jsxd:set(<<"package">>, V, Obj);
 translate_to_sniffle(<<"image_uuid">>, V, Obj) ->
     jsxd:set(<<"dataset">>, V, Obj);
+translate_to_sniffle(<<"package_name">>, V, Obj) ->
+    jsxd:set(<<"package">>, V, Obj);
 translate_to_sniffle(<<"docker">>, true, Obj) ->
     jsxd:set(<<"zone_type">>, <<"docker">>, Obj);
 translate_to_sniffle(<<"brand">>, Brand, Obj) ->
@@ -182,12 +206,16 @@ generate_zonecfg(Package, Dataset, OwnerData) ->
     %% {rctl, <<"zone.max-swap">>, privileged, MaxSwap1, deny}],
     Owner = jsxd:get(<<"owner">>, <<"00000000-0000-0000-0000-000000000000">>,
                      OwnerData),
+    Creator = jsxd:get(<<"creator">>,
+                       <<"00000000-0000-0000-0000-000000000000">>,
+                       OwnerData),
     lager:warning("[TODO] We don't generate a propper timestamp here"),
     Time = <<"2015-04-26T11:29:31.297Z">>,
     Attr = [{attr, <<"vm-version">>, string, 1},
             %% TODO: generte proper date
             {attr, <<"create-timestamp">>, string, Time},
-            {attr, <<"owner-uuid">>, string, Owner},
+            {attr, <<"billing-uuid">>, string, Owner},
+            {attr, <<"owner-uuid">>, string, Creator},
             {attr, <<"tmpfs">>, string, Ram * 2}],
     Opt = jsxd:fold(fun (<<"resolvers">>, V, Acc) ->
                             [{attr, <<"resolvers">>, string, V} | Acc];
@@ -224,6 +252,9 @@ generate_spec(Package, Dataset, OwnerData) ->
     CPUShares =jsxd:get(<<"cpu_shares">>, RamShare, Package),
     Owner = jsxd:get(<<"owner">>, <<"00000000-0000-0000-0000-000000000000">>,
                      OwnerData),
+    Creator = jsxd:get(<<"creator">>,
+                       <<"00000000-0000-0000-0000-000000000000">>,
+                       OwnerData),
     ZFSIOPriority = jsxd:get(<<"zfs_io_priority">>, RamShare, Package),
     Base0 = jsxd:thread([{select, [<<"uuid">>, <<"alias">>, <<"routes">>,
                                    <<"nics">>]},
@@ -232,7 +263,8 @@ generate_spec(Package, Dataset, OwnerData) ->
                          {set, <<"resolvers">>, DefaultResolvers},
                          {set, <<"cpu_shares">>, CPUShares},
                          {set, <<"max_swap">>, MaxSwap1},
-                         {set, <<"owner_uuid">>, Owner},
+                         {set, <<"owner_uuid">>, Creator},
+                         {set, <<"billing_uuid">>, Owner},
                          {set, <<"zfs_io_priority">>, ZFSIOPriority},
                          {set, <<"package_name">>, PackageUUID},
                          {set, <<"cpu_cap">>, CPUCap},
@@ -297,7 +329,7 @@ create_update(_, undefined, Config) ->
                        jsxd:set([<<"set_internal_metadata">>, <<"note">>],
                                 V, Obj);
                    (<<"owner">>, V, Obj) ->
-                       jsxd:set([<<"owner_uuid">>], V, Obj);
+                       jsxd:set([<<"billing_uuid">>], V, Obj);
                    (K, V, Obj) ->
                        case re:run(K, "_pw$") of
                            nomatch ->
@@ -319,7 +351,7 @@ create_update(_, undefined, Config) ->
              _ ->
                  Result
          end,
-    lager:debug("Generated update: ~s.~n", [jsx:encode(R1)]),
+    lager:debug("Generated update: ~s.~n", [jsone:encode(R1)]),
     R1;
 
 create_update(Original, Package, Config) ->
@@ -352,8 +384,8 @@ create_update(Original, Package, Config) ->
                          {ok, Path} ->
 
                              jsxd:set(<<"update_disks">>,
-                                      [[{<<"path">>, Path},
-                                        {<<"size">>, Q * 1024}]],
+                                      [#{<<"path">> => Path,
+                                         <<"size">> => Q * 1024}],
                                       Base1);
                          _ ->
                              Base1
@@ -397,7 +429,6 @@ ram_shares(Ram) ->
                       0
               end,
     round(1024*RamPerc).
-
 
 kvm_spec(Base, Package, Dataset) ->
     {ok, ImageID} = jsxd:get(<<"uuid">>, Dataset),
@@ -478,7 +509,7 @@ docker_spec(Base, Dataset, OwnerData) ->
                                <<"Cmd">>],
             case jsxd:get(ManifestCmdPath, Manifest) of
                 {ok, Cmd} ->
-                    CmdS = jsx:encode(Cmd),
+                    CmdS = jsone:encode(Cmd),
                     jsxd:set([<<"internal_metadata">>,
                               <<"docker:cmd">>], CmdS, Base3);
                 _ ->
@@ -487,11 +518,11 @@ docker_spec(Base, Dataset, OwnerData) ->
     end.
 
 encode_docker_metadata(Base, DockerData) ->
-    lists:foldl(fun ({K, V}, Acc) ->
-                        PrefixedName = <<"docker:", K/binary>>,
-                        Path = [<<"internal_metadata">>, PrefixedName],
-                        jsxd:set(Path, V, Acc)
-                end, Base, DockerData).
+    jsxd:fold(fun (K, V, Acc) ->
+                      PrefixedName = <<"docker:", K/binary>>,
+                      Path = [<<"internal_metadata">>, PrefixedName],
+                      jsxd:set(Path, V, Acc)
+              end, Base, DockerData).
 
 perhaps_set(Key, Src, Target, Obj) ->
     case jsxd:get(Key, Src) of
@@ -502,9 +533,9 @@ perhaps_set(Key, Src, Target, Obj) ->
     end.
 
 perhaps_map(Src, Obj, Mapping) ->
-    lists:foldl(fun({Key, Target}, Acc) ->
-                        perhaps_set(Key, Src, Target, Acc)
-                end, Obj, Mapping).
+    jsxd:fold(fun(Key, Target, Acc) ->
+                      perhaps_set(Key, Src, Target, Acc)
+              end, Obj, Mapping).
 
 dflt(undefined, Dflt) ->
     Dflt;

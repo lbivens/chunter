@@ -135,8 +135,7 @@ init([]) ->
     timer:send_interval(ServiceIVal, update_services),
     register_hypervisor(),
     lists:foldl(
-      fun (VM, _) ->
-              {<<"uuid">>, UUID} = lists:keyfind(<<"uuid">>, 1, VM),
+      fun (#{<<"uuid">> := UUID}, _) ->
               chunter_vm_fsm:load(UUID)
       end, 0, chunter_zone:list()),
 
@@ -449,8 +448,8 @@ update_services(UUID, Changed) ->
         [] ->
             ok;
         Changed1 ->
-            libhowl:send(UUID, [{<<"event">>, <<"services">>},
-                                {<<"data">>, Changed1}])
+            libhowl:send(UUID, #{<<"event">> => <<"services">>,
+                                 <<"data">> => Changed1})
     end.
 
 mem() ->

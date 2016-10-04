@@ -502,10 +502,10 @@ restoring_backup(next, State =
                      fun finish_delete_snapshot/4, Options)
      || Snap <- Toss],
     libhowl:send(VM,
-                 [{<<"event">>, <<"backup">>},
-                  {<<"data">>,
-                   [{<<"action">>, <<"restored">>},
-                    {<<"uuid">>, SnapID}]}]),
+                 #{<<"event">> => <<"backup">>,
+                   <<"data">> => #{
+                       <<"action">> => <<"restored">>,
+                       <<"uuid">> => SnapID}}),
     timer:send_after(500, get_info),
     %% The restored dataset does not have the correct quota,
     %% we reapply the package to make sure it is applied.
@@ -830,23 +830,23 @@ handle_sync_event({door, Ref, Data}, _From, StateName,
 handle_sync_event({door, Ref, Data}, _From, StateName,
                   State = #state{api_ref=Ref, uuid=UUID}) ->
     lager:info("[zone:~s] API: ~s", [UUID, Data]),
-    try jsx:decode(Data) of
+    try jsone:decode(Data) of
         JSON ->
             JSON1 = jsxd:from_list(JSON),
             Reply = case chunter_api:call(UUID, JSON1) of
                         {ok, D} ->
-                            Bin = jsx:encode(D),
+                            Bin = jsone:encode(D),
                             {ok, <<$1, Bin/binary>>};
                         {error, E} ->
                             lager:warning("[zdoor] error: ~p", [E]),
-                            RJSON = jsx:encode([{error, list_to_binary(E)}]),
+                            RJSON = jsone:encode([{error, list_to_binary(E)}]),
                             {ok, <<$0, RJSON/binary>>}
                     end,
             {reply, Reply, StateName, State}
     catch
         _:_ ->
             lager:warning("[zdoor] error: ~p", [Data]),
-            RJSON = jsx:encode([{error,  <<"format error: ", Data/binary>>}]),
+            RJSON = jsone:encode([{error,  <<"format error: ", Data/binary>>}]),
             Reply = {ok, <<$0, RJSON/binary>>},
             {reply, Reply, StateName, State}
     end;
@@ -927,7 +927,7 @@ handle_sync_event(delete, _From, StateName, State) ->
             {stop, {shutdown, not_found}, State};
         _VM ->
             spawn(chunter_vmadm, delete, [State#state.uuid]),
-            libhowl:send(State#state.uuid, [{<<"event">>, <<"delete">>}]),
+            libhowl:send(State#state.uuid, #{<<"event">> => <<"delete">>}),
             {reply, ok, StateName, State}
     end;
 
@@ -1101,13 +1101,13 @@ finish_snapshot(VM, SnapID, _, ok) ->
     snap_state(VM, SnapID, <<"completed">>),
     {ok, VmData} = ls_vm:get(VM),
     Snaps = ft_vm:snapshots(VmData),
-    TheSnap = proplists:get_value(SnapID, Snaps),
+    {ok, TheSnap} = jsxd:get(SnapID, Snaps),
     libhowl:send(VM,
-                 [{<<"event">>, <<"snapshot">>},
-                  {<<"data">>,
-                   [{<<"uuid">>, SnapID},
-                    {<<"action">>, <<"completed">>}] ++
-                   [{<<"data">>, TheSnap}]}]),
+                 #{<<"event">> => <<"snapshot">>,
+                   <<"data">> => #{
+                       <<"uuid">> => SnapID,
+                       <<"action">> => <<"completed">>,
+                       <<"data">> => TheSnap}}),
     ok;
 
 finish_snapshot(_VM, _SnapID, _, error) ->
@@ -1123,11 +1123,11 @@ do_delete_snapshot(<<_:1/binary, P/binary>>, _VM, SnapID, _) ->
 finish_delete_snapshot(VM, SnapID, _, ok) ->
     lager:debug("Deleting ~p", [SnapID]),
     ls_vm:set_snapshot(VM, [{[SnapID], delete}]),
-    libhowl:send(VM,
-                 [{<<"event">>, <<"snapshot">>},
-                  {<<"data">>,
-                   [{<<"action">>, <<"deleted">>},
-                    {<<"uuid">>, SnapID}]}]),
+    libhowl:send(VM, #{
+                   <<"event">> => <<"snapshot">>,
+                   <<"data">> => #{
+                       <<"action">> => <<"deleted">>,
+                       <<"uuid">> => SnapID}}),
     ok;
 
 finish_delete_snapshot(_VM, _SnapID, _, error) ->
@@ -1137,11 +1137,11 @@ do_rollback_snapshot(<<_:1/binary, P/binary>>, _VM, SnapID, _) ->
     chunter_zfs:rollback(P, SnapID, [r]).
 
 finish_rollback_snapshot(VM, SnapID, _, ok) ->
-    libhowl:send(VM,
-                 [{<<"event">>, <<"snapshot">>},
-                  {<<"data">>,
-                   [{<<"action">>, <<"rollback">>},
-                    {<<"uuid">>, SnapID}]}]),
+    libhowl:send(VM, #{
+                   <<"event">> => <<"snapshot">>,
+                   <<"data">> => #{
+                       <<"action">> => <<"rollback">>,
+                       <<"uuid">> => SnapID}}),
     lager:debug("[Snapshot] committing rollback fo snapshot ~s on VM ~s.",
                 [VM, SnapID]),
     ls_vm:commit_snapshot_rollback(VM, SnapID);
@@ -1265,12 +1265,12 @@ snapshot_action2(VM, Spec, UUID, R0, Fun, CompleteFun, Opts) ->
             ls_vm:log(VM, iolist_to_binary(M)),
             CompleteFun(VM, UUID, Opts, ok);
         {error, E} ->
-            libhowl:send(VM,
-                         [{<<"event">>, <<"snapshot">>},
-                          {<<"data">>,
-                           [{<<"action">>, <<"error">>},
-                            {<<"message">>, E},
-                            {<<"uuid">>, UUID}]}]),
+            libhowl:send(VM, #{
+                           <<"event">> => <<"snapshot">>,
+                           <<"data">> => #{
+                               <<"action">> => <<"error">>,
+                               <<"message">> => E,
+                               <<"uuid">> => UUID}}),
             lager:error("Snapshot failed with: ~p", E),
             CompleteFun(VM, UUID, Opts, error)
     end.
@@ -1291,7 +1291,7 @@ snapshot_sizes(VM) ->
                     end,
             %% First we look at backups
             Bs = ft_vm:backups(V),
-            KnownB = [ ID || {ID, _} <- Bs],
+            KnownB = maps:keys(Bs),
             Backups1 = lists:filter(fun ({Name, _}) ->
                                             lists:member(Name, KnownB)
                                     end, Snaps),
@@ -1305,7 +1305,7 @@ snapshot_sizes(VM) ->
 
             %% And then at sanpshots
             Ss = ft_vm:snapshots(V),
-            KnownS = [ ID || {ID, _} <- Ss],
+            KnownS = maps:keys(Ss),
             Snaps1 =lists:filter(fun ({Name, _}) ->
                                          lists:member(Name, KnownS)
                                  end, Snaps),
@@ -1368,7 +1368,7 @@ change_state(UUID, State, true) ->
 change_state(UUID, State, false) ->
     lager:debug("[~s] Changing state: ~s", [UUID, State]),
     ensure_state(UUID, State),
-    libhowl:send(UUID, [{<<"event">>, <<"state">>}, {<<"data">>, State}]),
+    libhowl:send(UUID, #{<<"event">> => <<"state">>, <<"data">> => State}),
     State.
 ensure_state(UUID, State) ->
     ensure_state(UUID, State, 10).
@@ -1397,12 +1397,12 @@ atom_to_binary(A) ->
 
 backup_update(VM, SnapID, K, V) ->
     ls_vm:set_backup(VM, [{[SnapID, K], V}]),
-    libhowl:send(VM,
-                 [{<<"event">>, <<"backup">>},
-                  {<<"data">>,
-                   [{<<"action">>, <<"update">>},
-                    {<<"data">>, [{K, V}]},
-                    {<<"uuid">>, SnapID}]}]).
+    libhowl:send(VM, #{
+                   <<"event">> => <<"backup">>,
+                   <<"data">> => #{
+                       <<"action">> => <<"update">>,
+                       <<"data">> => maps:from_list([{K, V}]),
+                       <<"uuid">> => SnapID}}).
 update_services(_, []) ->
     ok;
 
@@ -1411,8 +1411,9 @@ update_services(UUID, Changed) ->
         [] ->
             ok;
         Changed1 ->
-            libhowl:send(UUID, [{<<"event">>, <<"services">>},
-                                {<<"data">>, Changed1}])
+            libhowl:send(UUID, #{
+                           <<"event">> => <<"services">>,
+                           <<"data">> => Changed1})
     end.
 
 wait_import(<<_:1/binary, P/binary>>) ->
@@ -1621,8 +1622,9 @@ finalize_update(UUID) ->
 
 
 howl_update(UUID, Data) ->
-    libhowl:send(UUID, [{<<"event">>, <<"update">>},
-                        {<<"data">>, Data}]).
+    libhowl:send(UUID, #{
+                   <<"event">> => <<"update">>,
+                   <<"data">> => Data}).
 
 do_create(UUID, CreateJSON, VMSpec) ->
     change_state(UUID, <<"creating">>),
@@ -1656,8 +1658,8 @@ update_timeout(UUID) ->
                                  [{<<"docker:wait_for_attach">>, T}]}]).
 
 vm_event(UUID, Event) ->
-    libhowl:send(<<"command">>,
-                 [{<<"event">>, Event},
-                  {<<"uuid">>, fifo_utils:uuid()},
-                  {<<"data">>,
-                   [{<<"uuid">>, UUID}]}]).
+    libhowl:send(<<"command">>, #{
+                     <<"event">> => Event,
+                     <<"uuid">> => fifo_utils:uuid(),
+                     <<"data">> =>
+                         #{<<"uuid">> => UUID}}).
