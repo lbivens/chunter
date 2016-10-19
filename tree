@@ -5,7 +5,7 @@
 ├─ eper─0.94.0
 ├─ erlsom─1.2.1
 ├─ erltrace─0.1.4
-├─ fifo_dt─0.2.3
+├─ fifo_dt─0.2.4
 │  ├─ libsnarlmatch─0.1.7
 │  └─ riak_dt─2.1.1
 ├─ fifo_lager─0.1.4
@@ -23,18 +23,18 @@
 │  │  ├─ mimerl─1.0.2
 │  │  └─ ssl_verify_fun─1.1.0
 │  └─ poolboy─1.5.1
-├─ fifo_spec─0.1.28
-├─ fifo_utils─0.1.24
-│  └─ uuid─1.5.3
-│     └─ quickrand─1.5.3
+├─ fifo_spec─0.1.30
+├─ fifo_utils─0.1.26
+│  └─ uuid─1.5.4
+│     └─ quickrand─1.5.4
 ├─ jsone─1.4.0
 ├─ jsxd─0.2.3
 ├─ libchunter─0.1.48
-├─ libhowl─0.1.36
-│  └─ mdns_client_lib─0.1.39
-│     ├─ mdns_client─0.1.7
+├─ libhowl─0.1.37
+│  └─ mdns_client_lib─0.1.41
+│     ├─ mdns_client─0.1.8
 │     └─ pooler─1.5.0
-├─ libsnarl─0.3.46
+├─ libsnarl─0.3.48
 │  └─ oauth2─0.6.1
 ├─ libsniffle─0.3.48
 ├─ ranch─1.1.0
