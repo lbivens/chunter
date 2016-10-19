@@ -68,9 +68,9 @@ generate_sniffle(In, _Type) ->
          <<"zfs_io_priority">>, <<"disk_driver">>, <<"vcpus">>,
          <<"nic_driver">>, <<"hostname">>, <<"autoboot">>, <<"created_at">>,
          <<"dns_domain">>, <<"resolvers">>, <<"ram">>, <<"uuid">>,
-         <<"cpu_shares">>, <<"max_swap">>, <<"kernel_version">>,
-         <<"indestructible_zoneroot">>, <<"indestructible_delegated">>,
-         <<"boot_timestamp">>, <<"datasets">>],
+         <<"maintain_resolvers">>, <<"cpu_shares">>, <<"max_swap">>,
+         <<"kernel_version">>, <<"indestructible_zoneroot">>,
+         <<"indestructible_delegated">>, <<"boot_timestamp">>, <<"datasets">>],
     Sniffle0 = jsxd:select(KeepKeys, In),
     jsxd:fold(fun translate_to_sniffle/3, Sniffle0, In).
 
@@ -316,7 +316,8 @@ generate_spec(Package, Dataset, OwnerData) ->
 create_update(_, undefined, Config) ->
     KeepKeys = [<<"resolvers">>, <<"hostname">>, <<"alias">>, <<"remove_nics">>,
                 <<"add_nics">>, <<"update_nics">>, <<"autoboot">>,
-                <<"max_swap">>, <<"set_routes">>, <<"remove_routes">>],
+                <<"max_swap">>, <<"set_routes">>, <<"remove_routes">>,
+                <<"maintain_resolvers">>],
     MDataFun = fun (<<"ssh_keys">>, V, Obj) ->
                        jsxd:set([<<"set_customer_metadata">>,
                                  <<"root_authorized_keys">>], V, Obj);

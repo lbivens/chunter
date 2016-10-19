@@ -237,6 +237,7 @@ create_zone_data([{<<"dataset">>, Dataset}|R], Disks, Nics, Datasets) ->
 ?RENAME_INT(<<"virtio-txburst">>, <<"virtio_txburst">>);
 ?RENAME_INT(<<"virtio-txtimer">>, <<"virtio_txtimer">>);
 ?RENAME_BOOL(<<"vm-autoboot">>, <<"vm_autoboot">>);
+?RENAME_BOOL(<<"maintain-resolvers">>, <<"maintain_resolvers">>);
 ?RENAME_B64(<<"vnc-password">>, <<"vnc_password">>);
 ?RENAME_INT(<<"vnc-port">>, <<"vnc_port">>);
 ?RENAME_INT(<<"zoneid">>, <<"zoneid">>);
