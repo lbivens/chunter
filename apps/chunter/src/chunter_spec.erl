@@ -257,7 +257,7 @@ generate_spec(Package, Dataset, OwnerData) ->
                        OwnerData),
     ZFSIOPriority = jsxd:get(<<"zfs_io_priority">>, RamShare, Package),
     Base0 = jsxd:thread([{select, [<<"uuid">>, <<"alias">>, <<"routes">>,
-                                   <<"nics">>]},
+                                   <<"nics">>, <<"indestructible_zoneroot">>]},
                          {set, [<<"nics">>, 0, <<"primary">>], true},
                          {set, <<"autoboot">>, Autoboot},
                          {set, <<"resolvers">>, DefaultResolvers},
@@ -317,7 +317,8 @@ create_update(_, undefined, Config) ->
     KeepKeys = [<<"resolvers">>, <<"hostname">>, <<"alias">>, <<"remove_nics">>,
                 <<"add_nics">>, <<"update_nics">>, <<"autoboot">>,
                 <<"max_swap">>, <<"set_routes">>, <<"remove_routes">>,
-                <<"maintain_resolvers">>],
+                <<"maintain_resolvers">>, <<"indestructible_zoneroot">>,
+                <<"indestructible_delegated">>],
     MDataFun = fun (<<"ssh_keys">>, V, Obj) ->
                        jsxd:set([<<"set_customer_metadata">>,
                                  <<"root_authorized_keys">>], V, Obj);
@@ -470,11 +471,13 @@ zone_spec(Base0, Package, Dataset, OwnerData) ->
                         [<<"zfs_data_compression">>], Base2),
     Base4 = perhaps_set(<<"delegate_dataset">>, OwnerData,
                         [<<"delegate_dataset">>], Base3),
+    Base5 = perhaps_set(<<"indestructible_delegated">>, OwnerData,
+                        [<<"indestructible_delegated">>], Base4),
     case jsxd:get([<<"zone_type">>], Dataset) of
         {ok, <<"lx">>} ->
-            lx_spec(Base4, Dataset);
+            lx_spec(Base5, Dataset);
         {ok, <<"docker">>} ->
-            docker_spec(Base4, Dataset, OwnerData);
+            docker_spec(Base5, Dataset, OwnerData);
         _ ->
             Base4
     end.
