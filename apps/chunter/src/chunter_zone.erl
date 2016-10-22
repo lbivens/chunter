@@ -14,8 +14,7 @@
 -export([list/0, list_/0, get/1, get_raw/1, zonecfg/1]).
 
 
--export([ex2/0]).
--ignore_xref([ex2/0, get_raw/1]).
+-ignore_xref([get_raw/1]).
 
 
 list() ->
@@ -47,7 +46,10 @@ get(ZUUID) ->
                                     <<"type">> => Type}) ||
              {_ID, Name, VMState, Path, _UUID, Type} <- get_raw(ZUUID)] of
         [VM | _] ->
-            VM;
+            VM#{
+              <<"indestructible_zoneroot">> => indestructible_zoneroot(ZUUID),
+              <<"indestructible_delegated">> => indestructible_delegated(ZUUID)
+             };
         [] ->
             {error, not_found}
     end.
@@ -75,46 +77,6 @@ get_raw(ZUUID) when is_binary(ZUUID) ->
             [{ID, UUID, VMState, Path, UUID, Type} ||
                 [ID, UUID, VMState, Path, _UUID, Type, _IP | _] <- Zones]
     end.
-
-ex2() ->
-    zonecfg(
-      [create,
-       {zonepath, <<"/zones/2398fe7c-032f-11e5-abb0-b33f9f953915">>},
-       {brand, ipkg},
-       {autoboot, true},
-       {limitpriv, default},
-       {'ip-type', exclusive},
-       {add, net,
-        [{physical, <<"net0">>},
-         {'mac-addr', <<"12:1e:96:73:04:17">>},
-         {'global-nic', admin},
-         {property, gateway, "192.168.1.1"},
-         {property, ip, "192.168.1.44"},
-         {property, netmask, "255.255.255.0"},
-         {property, primary, "true"}
-        ]},
-       {rctl, <<"zone.cpu-shares">>, privileged, 100, none},
-       {rctl, <<"zone.max-lwps">>, privileged, 2000, deny},
-       {rctl, <<"zone.max-msg-ids">>, privileged, 4096, deny},
-       {rctl, <<"zone.max-sem-ids">>, privileged, 4096, deny},
-       {rctl, <<"zone.max-shm-ids">>, privileged, 4096, deny},
-       {rctl, <<"zone.max-shm-memory">>, privileged, 3221225472, deny},
-       {rctl, <<"zone.zfs-io-priority">>, privileged, 100, none},
-       {rctl, <<"zone.cpu-cap">>, privileged, 400, deny},
-       {rctl, <<"zone.max-physical-memory">>, privileged, 6442450944, deny},
-       {rctl, <<"zone.max-locked-memory">>, privileged, 6442450944, deny},
-       {rctl, <<"zone.max-swap">>, privileged, 6442450944, deny},
-       {attr, <<"vm-version">>, string, 1},
-       {attr, <<"create-timestamp">>, string, <<"2015-04-26T11:29:31.297Z">>},
-       {attr, <<"billing-id">>, string,
-        <<"00000000-0000-0000-0000-000000000000">>},
-       {attr, <<"owner-uuid">>, string,
-        <<"00000000-0000-0000-0000-000000000000">>},
-       {attr, <<"hostname">>, string, <<"fifo01">>},
-       {attr, <<"dns-domain">>, string, <<"local">>},
-       {attr, <<"resolvers">>, string, <<"8.8.8.8,8.8.4.4">>},
-       {attr, <<"alias">>, string, <<"ZmlmbzAx">>},
-       {attr, <<"tmpfs">>, string, 6144}]).
 
 %% zonecfg -z 2398fe7c-032f-11e5-abb0-b33f9f953915 delete -F
 
@@ -211,3 +173,15 @@ v(A) when is_atom(A) ->
 zoneadm_list() ->
     [re:split(Line, ":")
      || Line <- re:split(os:cmd("/usr/sbin/zoneadm list -ip"), "\n")].
+
+indestructible(D) ->
+    case chunter_zfs:list(<<D/binary, "@indestructible">>) of
+        {ok, _} ->
+            true;
+        _ ->
+            false
+    end.
+indestructible_zoneroot(UUID) ->
+    indestructible(<<"zones/", UUID/binary>>).
+indestructible_delegated(UUID) ->
+    indestructible(<<"zones/", UUID/binary, "/data">>).
