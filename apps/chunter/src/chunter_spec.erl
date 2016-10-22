@@ -473,13 +473,15 @@ zone_spec(Base0, Package, Dataset, OwnerData) ->
                         [<<"delegate_dataset">>], Base3),
     Base5 = perhaps_set(<<"indestructible_delegated">>, OwnerData,
                         [<<"indestructible_delegated">>], Base4),
+    Base6 = perhaps_set(<<"maintain_resolvers">>, OwnerData,
+                        [<<"maintain_resolvers">>], Base5),
     case jsxd:get([<<"zone_type">>], Dataset) of
         {ok, <<"lx">>} ->
-            lx_spec(Base5, Dataset);
+            lx_spec(Base6, Dataset);
         {ok, <<"docker">>} ->
-            docker_spec(Base5, Dataset, OwnerData);
+            docker_spec(Base6, Dataset, OwnerData);
         _ ->
-            Base4
+            Base6
     end.
 
 lx_spec(Base, Dataset) ->
