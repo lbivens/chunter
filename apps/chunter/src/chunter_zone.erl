@@ -53,7 +53,7 @@ get(ZUUID) ->
 
 apply_resolvers(ZUUID, VM) ->
     VM1 = jsxd:update([<<"maintain_resolvers">>], fun(V) -> V end, false, VM),
-    apply_indestructible(ZUUID, VM).
+    apply_indestructible(ZUUID, VM1).
 
 apply_indestructible(ZUUID, VM) ->
     VM#{
