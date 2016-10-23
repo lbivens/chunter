@@ -51,6 +51,8 @@ get(ZUUID) ->
             {error, not_found}
     end.
 
+%% The way vmadm handles maintain_resolvers is different to other boolean fields
+%% so we got to adapt for that and actively set it false when it's not true.
 apply_resolvers(ZUUID, VM) ->
     VM1 = jsxd:update([<<"maintain_resolvers">>], fun(V) -> V end, false, VM),
     apply_indestructible(ZUUID, VM1).
