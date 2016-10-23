@@ -46,13 +46,20 @@ get(ZUUID) ->
                                     <<"type">> => Type}) ||
              {_ID, Name, VMState, Path, _UUID, Type} <- get_raw(ZUUID)] of
         [VM | _] ->
-            VM#{
-              <<"indestructible_zoneroot">> => indestructible_zoneroot(ZUUID),
-              <<"indestructible_delegated">> => indestructible_delegated(ZUUID)
-             };
+            apply_resolvers(ZUUID, VM);
         [] ->
             {error, not_found}
     end.
+
+apply_resolvers(ZUUID, VM) ->
+    VM1 = jsxd:update([<<"maintain_resolvers">>], fun(V) -> V end, false, VM),
+    apply_indestructible(ZUUID, VM).
+
+apply_indestructible(ZUUID, VM) ->
+    VM#{
+      <<"indestructible_zoneroot">> => indestructible_zoneroot(ZUUID),
+      <<"indestructible_delegated">> => indestructible_delegated(ZUUID)
+     }.
 
 -spec get_raw(ZUUID::fifo:uuid()) -> [{ID::binary(),
                                        Name::binary(),
