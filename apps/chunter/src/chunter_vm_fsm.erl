@@ -1616,6 +1616,7 @@ finalize_update(UUID) ->
     VMData = load_vm(UUID),
     chunter_server:update_mem(),
     SniffleData = chunter_spec:to_sniffle(VMData),
+    howl_update(UUID, [{<<"config">>, SniffleData}]),
     ls_vm:set_config(UUID, SniffleData),
     ls_vm:log(UUID, <<"Update complete.">>),
     SniffleData.
