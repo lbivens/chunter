@@ -93,7 +93,7 @@
 %%% Internal functions
 %%%===================================================================
 
--spec load(VM::fifo:vm_config()) -> fifo:vm_config().
+-spec load(VM::fifo:vm_config()) -> fifo:vm_config() | {error, not_found}.
 
 load(#{<<"name">> := Name} = VM) ->
     Res = convert(<<"/etc/zones/", Name/binary, ".xml">>, maps:to_list(VM)),
