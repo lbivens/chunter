@@ -45,6 +45,8 @@ get(ZUUID) ->
                                     <<"zonepath">> => Path,
                                     <<"type">> => Type}) ||
              {_ID, Name, VMState, Path, _UUID, Type} <- get_raw(ZUUID)] of
+        [{error, not_found} | _] ->
+            {error, not_found};
         [VM | _] ->
             apply_resolvers(ZUUID, VM);
         [] ->
