@@ -757,7 +757,9 @@ handle_event(update_fw, StateName,
             NewRules = ft_vm:fw_rules(VM),
             NewRules1 = [fwadm:convert(UUID, R) || R <- NewRules],
             NewRules2 = lists:flatten(NewRules1),
-            OldRules1 = [map_rule(R) || R <- OldRules],
+            OldRules1 = [{UUID, Rule} ||
+                            #{<<"uuid">> := UUID, <<"rule">> := Rule}
+                                <- OldRules],
             {Add, Delete} = split_rules(OldRules1, NewRules2),
             lager:info("[vm:~s(~s)] Updating FW rules, adding ~p deleting ~p.",
                        [UUID, Owner, Add, Delete]),
@@ -1497,14 +1499,6 @@ split_rules([{UUID, Rule} | OldRules], NewRules, Add, Delete) ->
         false ->
             split_rules(OldRules, NewRules, Add, [UUID | Delete])
     end.
-
--spec map_rule([{binary(), binary() | fifo:smartos_fw_rule()}]) ->
-                      {binary(), fifo:smartos_fw_rule()}.
-map_rule(JSX) ->
-    %% We need proplists or dialyzer will insist it's a not a rule.
-    UUID = proplists:get_value(<<"uuid">>, JSX),
-    Rule = proplists:get_value(<<"rule">>, JSX),
-    {UUID, Rule}.
 
 
 create_ipkg(Dataset, Package, VMSpec, State = #state{uuid = UUID}) ->
