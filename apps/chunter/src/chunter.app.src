@@ -1,6 +1,6 @@
 {application, chunter,
  [{description, "SmartOS hypervisor manager."},
-  {vsn, "0.8.3p1"},
+  {vsn, "0.8.3p2"},
   {registered, []},
   {applications, [
                   kernel,
