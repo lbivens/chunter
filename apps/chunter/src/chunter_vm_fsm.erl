@@ -1378,12 +1378,18 @@ ensure_state(UUID, State) ->
 ensure_state(UUID, State, 0) ->
     lager:error("[~s] Could not set state to ~s", [UUID, State]);
 ensure_state(UUID, State, N) ->
-    ok = ls_vm:state(UUID, State),
-    {ok, VM} =ls_vm:get(UUID),
-    case ft_vm:state(VM) of
-        State ->
-            ok;
-        _ ->
+    case ls_vm:state(UUID, State) of
+        ok ->
+            {ok, VM} = ls_vm:get(UUID),
+            case ft_vm:state(VM) of
+                State ->
+                    ok;
+                _ ->
+                    ensure_state(UUID, State, N - 1)
+            end;
+        {error, no_servers} ->
+            %% if we have no servers we sleep and try agian.
+            timer:sleep(500),
             ensure_state(UUID, State, N - 1)
     end.
 
