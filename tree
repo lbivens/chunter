@@ -24,7 +24,7 @@
 │  │  └─ ssl_verify_fun─1.1.0
 │  └─ poolboy─1.5.1
 ├─ fifo_spec─0.1.30
-├─ fifo_utils─0.1.26
+├─ fifo_utils─0.1.28
 │  └─ uuid─1.5.4
 │     └─ quickrand─1.5.4
 ├─ jsone─1.4.0

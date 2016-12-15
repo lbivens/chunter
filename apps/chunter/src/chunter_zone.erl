@@ -37,7 +37,7 @@ list_() ->
                     zoneadm_list(), ID =/= <<"0">>]
     end.
 
--spec get(ZUUID::fifo:uuid()) -> fifo:vm_config() | {error, not_found}.
+-spec get(ZUUID::fifo:uuid()) -> {ok, fifo:vm_config()} | {error, not_found}.
 
 get(ZUUID) ->
     case [chunter_zoneparser:load(#{<<"name">> => Name,
@@ -48,7 +48,7 @@ get(ZUUID) ->
         [{error, not_found} | _] ->
             {error, not_found};
         [VM | _] ->
-            apply_resolvers(ZUUID, VM);
+            {ok, apply_resolvers(ZUUID, VM)};
         [] ->
             {error, not_found}
     end.
