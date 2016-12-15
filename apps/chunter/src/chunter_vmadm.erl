@@ -245,8 +245,8 @@ create(UUID, Data) ->
                                      <<"uuid">> => UUID}}),
                   chunter_vm_fsm:load(UUID);
               {error, E} ->
-                  delete(UUID),
                   lager:error("vmad:create - Failed: ~p.", [E]),
+                  delete(UUID),
                   {error, E}
           end,
     lager:info("vmadm:create - updating memory.", []),
