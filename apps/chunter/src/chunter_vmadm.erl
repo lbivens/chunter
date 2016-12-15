@@ -117,7 +117,7 @@ delete(UUID) ->
                  lager:debug("[vmadm] ~s", [R]),
                  R;
              S when S =:= omnios; S =:= solaris ->
-                 VM = chunter_zone:get(UUID),
+                 {ok, VM} =  chunter_zone:get(UUID),
                  force_stop(UUID),
                  lager:info("zoneadm:uninstall - UUID: ~s / ~p.", [UUID, VM]),
                  zoneadm(UUID, uninstall),

@@ -635,11 +635,11 @@ handle_event({force_state, NextState}, StateName,
 handle_event(register, StateName, State = #state{uuid = UUID}) ->
     ls_vm:register(UUID, State#state.hypervisor),
     %%    change_state(State#state.uuid, atom_to_binary(StateName)),
-    case load_vm(UUID) of
+    case chunter_zone:get(UUID) of
         {error, not_found} ->
             lager:debug("[~s] Stopping in load, notfound.", [State#state.uuid]),
             {stop, {shutdown, not_found}, State};
-        VMData ->
+        {ok, VMData} ->
             snapshot_sizes(UUID),
             timer:send_after(500, get_info),
             SniffleData = chunter_spec:to_sniffle(VMData),
@@ -667,12 +667,12 @@ handle_event(register, StateName, State = #state{uuid = UUID}) ->
 
 handle_event({update, undefined, Config}, StateName,
              State = #state{uuid = UUID}) ->
-    case load_vm(UUID) of
+    case chunter_zone:get(UUID) of
         {error, not_found} ->
             lager:debug("[~s] Stopping in update, notfound.",
                         [State#state.uuid]),
             {stop, {shutdown, not_found}, State};
-        VMData ->
+        {ok, VMData} ->
             Update = chunter_spec:create_update(VMData, undefined, Config),
             case chunter_vmadm:update(UUID, Update) of
                 ok ->
@@ -689,12 +689,12 @@ handle_event({update, undefined, Config}, StateName,
 
 handle_event({update, Package, Config}, StateName,
              State = #state{uuid = UUID}) ->
-    case load_vm(UUID) of
+    case chunter_zone:get(UUID) of
         {error, not_found} ->
             lager:debug("[~s] Stopping in update, notfound.",
                         [State#state.uuid]),
             {stop, {shutdown, not_found}, State};
-        VMData ->
+        {ok, VMData} ->
             P = ft_package:to_json(Package),
             Update = chunter_spec:create_update(VMData, P, Config),
             case chunter_vmadm:update(UUID, Update) of
@@ -719,10 +719,10 @@ handle_event(remove, _StateName, State) ->
 
 handle_event(delete, _StateName, State = #state{uuid = UUID}) ->
     lager:debug("[~s] Calling delete.", [State#state.uuid]),
-    case load_vm(UUID) of
+    case chunter_zone:get(UUID) of
         {error, not_found} ->
             ok;
-        _VM ->
+        {ok, _VM} ->
             chunter_vmadm:delete(UUID),
             lager:info("Deleting ~s successfull, letting sniffle know.",
                        [UUID]),
@@ -734,10 +734,10 @@ handle_event(delete, _StateName, State = #state{uuid = UUID}) ->
 
 handle_event(store, _StateName, State = #state{uuid = UUID}) ->
     lager:debug("[~s] Calling delete to store VM.", [State#state.uuid]),
-    case load_vm(UUID) of
+    case chunter_zone:get(UUID) of
         {error, not_found} ->
             ok;
-        _VM ->
+        {ok, _VM} ->
             chunter_vmadm:delete(UUID),
             lager:info("Deleting ~s successfull, letting sniffle know.",
                        [UUID]),
@@ -923,11 +923,11 @@ handle_sync_event({snapshot, rollback, SnapID}, _From, StateName, State) ->
     {reply, ok, rolling_back_snapshot, State1};
 
 handle_sync_event(delete, _From, StateName, State) ->
-    case load_vm(State#state.uuid) of
+    case chunter_zone:get(State#state.uuid) of
         {error, not_found} ->
             lager:debug("[~s] Delete sync event.", [State#state.uuid]),
             {stop, {shutdown, not_found}, State};
-        _VM ->
+        {ok, _VM} ->
             spawn(chunter_vmadm, delete, [State#state.uuid]),
             libhowl:send(State#state.uuid, #{<<"event">> => <<"delete">>}),
             {reply, ok, StateName, State}
@@ -1224,10 +1224,10 @@ snapshot_action(VM, UUID, Fun, Opts) ->
     snapshot_action(VM, UUID, Fun, fun(_, _, _, _) -> ok end, Opts).
 
 snapshot_action(VM, UUID, Fun, CompleteFun, Opts) ->
-    case load_vm(VM) of
+    case chunter_zone:get(VM) of
         {error, not_found} ->
             ok;
-        VMData ->
+        {ok, VMData} ->
             Spec = chunter_spec:to_sniffle(VMData),
             snapshot_action1(VM, Spec, UUID, Fun, CompleteFun, Opts)
     end.
@@ -1284,10 +1284,10 @@ snapshot_sizes(VM) ->
             lager:warning("[~s] No Servers to update snapshots.", [VM]),
             ok;
         {_, {ok, V}} ->
-            Snaps = case load_vm(VM) of
+            Snaps = case chunter_zone:get(VM) of
                         {error, not_found} ->
                             [];
-                        VMData ->
+                        {ok, VMData} ->
                             Spec = chunter_spec:to_sniffle(VMData),
                             chunter_snap:get_all(VM, Spec)
                     end,
@@ -1349,10 +1349,6 @@ do_destroy(<<_:1/binary, P/binary>>, _VM, _SnapID, _) ->
 %%% Utility
 %%%===================================================================
 
--spec load_vm(ZUUID::fifo:uuid()) -> fifo:vm_config() | {error, not_found}.
-
-load_vm(UUID) ->
-    chunter_zone:get(UUID).
 
 -spec change_state(UUID::binary(), State::fifo:vm_state()) -> fifo:vm_state().
 
@@ -1378,12 +1374,18 @@ ensure_state(UUID, State) ->
 ensure_state(UUID, State, 0) ->
     lager:error("[~s] Could not set state to ~s", [UUID, State]);
 ensure_state(UUID, State, N) ->
-    ok = ls_vm:state(UUID, State),
-    {ok, VM} =ls_vm:get(UUID),
-    case ft_vm:state(VM) of
-        State ->
-            ok;
-        _ ->
+    case ls_vm:state(UUID, State) of
+        ok ->
+            {ok, VM} = ls_vm:get(UUID),
+            case ft_vm:state(VM) of
+                State ->
+                    ok;
+                _ ->
+                    ensure_state(UUID, State, N - 1)
+            end;
+        {error, no_servers} ->
+            %% if we have no servers we sleep and try agian.
+            timer:sleep(500),
             ensure_state(UUID, State, N - 1)
     end.
 
@@ -1607,7 +1609,7 @@ snaps_to_toss(Path, Remote, SnapID) ->
     [T || T <- Toss0, T =/= SnapID].
 
 finalize_update(UUID) ->
-    VMData = load_vm(UUID),
+    {ok, VMData} = chunter_zone:get(UUID),
     chunter_server:update_mem(),
     SniffleData = chunter_spec:to_sniffle(VMData),
     howl_update(UUID, [{<<"config">>, SniffleData}]),
