@@ -76,23 +76,8 @@ generate_sniffle(In, _Type) ->
 
 translate_to_sniffle(<<"owner_uuid">>, ?EMPTY, Obj) ->
     Obj;
-translate_to_sniffle(<<"billing_uuid">>, ?EMPTY, Obj) ->
-    Obj;
-translate_to_sniffle(<<"billing_uuid">>, V, Obj) ->
-    Obj1 = jsxd:set(<<"owner">>, V, Obj),
-    case jsxd:get(<<"owner">>, Obj) of
-        {ok, Owner} ->
-            jsxd:set(<<"creator">>, Owner, Obj1);
-        _ ->
-            Obj1
-    end;
 translate_to_sniffle(<<"owner_uuid">>, V, Obj) ->
-    case jsxd:get(<<"owner">>, Obj) of
-        {ok, _} ->
-            jsxd:set(<<"creator">>, V, Obj);
-        _ ->
-            jsxd:set(<<"owner">>, V, Obj)
-    end;
+    jsxd:set(<<"owner">>, V, Obj);
 translate_to_sniffle(<<"internal_metadata">>, Int, Obj) ->
     jsxd:merge(Int, Obj);
 translate_to_sniffle(<<"dataset_uuid">>, V, Obj) ->
@@ -214,8 +199,7 @@ generate_zonecfg(Package, Dataset, OwnerData) ->
     Attr = [{attr, <<"vm-version">>, string, 1},
             %% TODO: generte proper date
             {attr, <<"create-timestamp">>, string, Time},
-            {attr, <<"billing-uuid">>, string, Owner},
-            {attr, <<"owner-uuid">>, string, Creator},
+            {attr, <<"owner-uuid">>, string, Owner},
             {attr, <<"tmpfs">>, string, Ram * 2}],
     Opt = jsxd:fold(fun (<<"resolvers">>, V, Acc) ->
                             [{attr, <<"resolvers">>, string, V} | Acc];
@@ -263,8 +247,7 @@ generate_spec(Package, Dataset, OwnerData) ->
                          {set, <<"resolvers">>, DefaultResolvers},
                          {set, <<"cpu_shares">>, CPUShares},
                          {set, <<"max_swap">>, MaxSwap1},
-                         {set, <<"owner_uuid">>, Creator},
-                         {set, <<"billing_uuid">>, Owner},
+                         {set, <<"owner_uuid">>, Owner},
                          {set, <<"zfs_io_priority">>, ZFSIOPriority},
                          {set, <<"package_name">>, PackageUUID},
                          {set, <<"cpu_cap">>, CPUCap},
@@ -331,7 +314,7 @@ create_update(_, undefined, Config) ->
                        jsxd:set([<<"set_internal_metadata">>, <<"note">>],
                                 V, Obj);
                    (<<"owner">>, V, Obj) ->
-                       jsxd:set([<<"billing_uuid">>], V, Obj);
+                       jsxd:set([<<"owner_uuid">>], V, Obj);
                    (K, V, Obj) ->
                        case re:run(K, "_pw$") of
                            nomatch ->
