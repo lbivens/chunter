@@ -376,8 +376,11 @@ create_update(Original, Package, Config) ->
                              Base1
                      end;
                  zone ->
+                     Comp = jsxd:get([<<"compression">>], <<"off">>, Package),
                      jsxd:thread([{set, <<"max_physical_memory">>, Ram},
-                                  {set, <<"quota">>, Q}],
+                                  {set, <<"quota">>, Q},
+                                  {set, <<"zfs_root_compression">>, Comp},
+                                  {set, <<"zfs_data_compression">>, Comp}],
                                  Base0)
              end,
     lager:debug("Created Update package ~p / ~p / ~p to: ~p.",
@@ -515,8 +518,8 @@ encode_docker_metadata(Base, DockerData) ->
 
 perhaps_set(Key, Src, Target, Obj) ->
     case jsxd:get(Key, Src) of
-        {ok, Compression} ->
-            jsxd:set(Target, Compression, Obj);
+        {ok, Value} ->
+            jsxd:set(Target, Value, Obj);
         _ ->
             Obj
     end.
