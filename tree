@@ -24,7 +24,7 @@
 │  │  └─ ssl_verify_fun─1.1.0
 │  └─ poolboy─1.5.1
 ├─ fifo_spec─0.1.30
-├─ fifo_utils─0.1.28
+├─ fifo_utils─0.1.30
 │  └─ uuid─1.5.4
 │     └─ quickrand─1.5.4
 ├─ jsone─1.4.0
@@ -36,7 +36,7 @@
 │     └─ pooler─1.5.0
 ├─ libsnarl─0.3.48
 │  └─ oauth2─0.6.1
-├─ libsniffle─0.3.48
+├─ libsniffle─0.3.49
 ├─ ranch─1.1.0
 ├─ recon─2.3.2
 └─ smurf─0.1.3
