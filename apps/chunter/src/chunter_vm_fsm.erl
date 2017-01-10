@@ -407,7 +407,6 @@ initialized({restore, SnapID, Options},
             State1 = State#state{orig_state=loading,
                                  type = Type, zone_type = ZoneType,
                                  args={SnapID, Options, Path, Toss}},
-            vm_event(UUID,  <<"vm-restored">>),
             restoring_backup(next, State1);
         E ->
             R = chunter_lock:release(UUID),
@@ -741,7 +740,6 @@ handle_event(store, _StateName, State = #state{uuid = UUID}) ->
             chunter_vmadm:delete(UUID),
             lager:info("Deleting ~s successfull, letting sniffle know.",
                        [UUID]),
-            vm_event(UUID,  <<"vm-stored">>),
             ensure_state(UUID, <<"stored">>)
     end,
     wait_for_delete(UUID),
@@ -1653,10 +1651,3 @@ update_timeout(UUID) ->
     T = erlang:system_time(milli_seconds) + 60000,
     chunter_vmadm:update(UUID, [{<<"set_internal_metadata">>,
                                  [{<<"docker:wait_for_attach">>, T}]}]).
-
-vm_event(UUID, Event) ->
-    libhowl:send(<<"command">>, #{
-                     <<"event">> => Event,
-                     <<"uuid">> => fifo_utils:uuid(),
-                     <<"data">> =>
-                         #{<<"uuid">> => UUID}}).
