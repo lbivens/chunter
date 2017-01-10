@@ -238,11 +238,6 @@ create(UUID, Data) ->
     Res = case wait_for_text(Port, UUID, 60*10) of
               ok ->
                   lager:info("vmadm:create - vmadm returned sucessfully.", []),
-                  libhowl:send(<<"command">>,
-                               #{<<"event">> => <<"vm-create">>,
-                                 <<"uuid">> => fifo_utils:uuid(),
-                                 <<"data">> => #{
-                                     <<"uuid">> => UUID}}),
                   chunter_vm_fsm:load(UUID);
               {error, E} ->
                   lager:error("vmad:create - Failed: ~p.", [E]),
