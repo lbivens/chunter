@@ -14,8 +14,16 @@
          restore_path/3,
          mk_s3_conf/1
         ]).
+-define(TRIES, 3).
 
 upload(<<_:1/binary, P/binary>>, VM, SnapID, Options) ->
+    upload_(P, VM, SnapID, Options, ?TRIES).
+
+upload_(_P, _VM, SnapID, _Options, 0) ->
+    lager:warning("[~s] Upload failed.", [SnapID]),
+    {error, upload_failed};
+
+upload_(P, VM, SnapID, Options, N) ->
     Disk = case P of
                %% 42 is the lenght of zone/<uuid>
                <<_:42/binary, "-", Dx/binary>> ->
@@ -29,29 +37,36 @@ upload(<<_:1/binary, P/binary>>, VM, SnapID, Options) ->
                 {ok, S} ->
                     S
             end,
-    lager:debug("Starting upload wiht chunk size: ~p.", [Chunk]),
+    lager:debug("[~s] Starting upload wiht chunk size: ~p.", [SnapID, Chunk]),
     DfltTarget = <<VM/binary, "/", SnapID/binary, Disk/binary>>,
-    Target = proplists:get_value(target, Options, DfltTarget),
-    AKey = proplists:get_value(access_key, Options),
-    SKey = proplists:get_value(secret_key, Options),
-    S3Host = proplists:get_value(s3_host, Options),
-    S3Port = proplists:get_value(s3_port, Options),
-    Bucket = proplists:get_value(s3_bucket, Options),
-    {ok, Upload} = fifo_s3_upload:new(AKey, SKey, S3Host, S3Port, Bucket,
-                                      Target),
-    Cmd = code:priv_dir(chunter) ++ "/zfs_export.gzip.sh",
-    Prt = case proplists:get_value(parent, Options) of
-              undefined ->
-                  run(Cmd, [P, SnapID]);
-              Inc ->
-                  backup_update(VM, SnapID, <<"parent">>, Inc, Options),
-                  run(Cmd, [P, SnapID, Inc])
-          end,
-    backup_update(VM, SnapID, <<"state">>, <<"uploading">>, Options),
-    backup_update(VM, SnapID, [<<"files">>, Target, <<"size">>], 0, Options),
-    Ctx = crypto:hash_init(sha),
-    upload_to_cloud(VM, SnapID, Prt, Upload, <<>>, Chunk, 0, Ctx, Target,
-                    Options).
+    Target     = proplists:get_value(target, Options, DfltTarget),
+    AKey       = proplists:get_value(access_key, Options),
+    SKey       = proplists:get_value(secret_key, Options),
+    S3Host     = proplists:get_value(s3_host, Options),
+    S3Port     = proplists:get_value(s3_port, Options),
+    Bucket     = proplists:get_value(s3_bucket, Options),
+    case fifo_s3_upload:new(AKey, SKey, S3Host, S3Port, Bucket, Target) of
+        {ok, Upload} ->
+            lager:debug("[~s] Upload successfully initiated", [SnapID]),
+
+            Cmd = code:priv_dir(chunter) ++ "/zfs_export.gzip.sh",
+            Prt = case proplists:get_value(parent, Options) of
+                      undefined ->
+                          run(Cmd, [P, SnapID]);
+                      Inc ->
+                          backup_update(VM, SnapID, <<"parent">>, Inc, Options),
+                          run(Cmd, [P, SnapID, Inc])
+                  end,
+            backup_update(VM, SnapID, <<"state">>, <<"uploading">>, Options),
+            backup_update(VM, SnapID,
+                          [<<"files">>, Target, <<"size">>], 0, Options),
+            Ctx = crypto:hash_init(sha),
+            upload_to_cloud(VM, SnapID, Prt, Upload, <<>>, Chunk, 0, Ctx,
+                            Target, Options);
+        {error, E} ->
+            lager:warning("[~s] Upload error on try ~p: ~p", [SnapID, N, E]),
+            upload_(P, VM, SnapID, Options, N - 1)
+    end.
 
 
 %% Wish we could match on binary AccIn in the haed sadly erlang doesn't allow
