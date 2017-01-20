@@ -245,7 +245,7 @@ handle_message({release, UUID}, State) ->
     {stop, chunter_lock:release(UUID), State};
 
 handle_message({machines, create, UUID, PSpec, DSpec, Config}, State)
-  when is_binary(UUID), is_list(Config) ->
+  when is_binary(UUID), is_map(Config) ->
     case chunter_lock:lock(UUID) of
         ok ->
             chunter_vm_fsm:create(UUID, PSpec, DSpec, Config),
@@ -274,7 +274,7 @@ handle_message(update, State) ->
     {stop, State};
 
 handle_message(Oops, State) ->
-    lager:info("oops: ~p~n", [Oops]),
+    lager:warning("Unknown message: ~p~n", [Oops]),
     {stop, State}.
 
 handle_call(_Request, _From, State) ->

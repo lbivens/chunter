@@ -4,25 +4,25 @@
 
 -define(MAX_MDATA_SIZE, 1024*1024*32).
 
-call(UUID, R = [{<<"action">>, <<"zfs-", _/binary>>} | _]) ->
+call(UUID, R = #{<<"action">> := <<"zfs-", _/binary>>}) ->
     check_call(snapshot_api, UUID, R);
 
-call(UUID, R = [{<<"action">>, <<"snapshot-", _/binary>>} | _]) ->
+call(UUID, R = #{<<"action">> := <<"snapshot-", _/binary>>}) ->
     check_call(snapshot_api, UUID, R);
 
-call(UUID, R = [{<<"action">>, <<"backup-", _/binary>>} | _]) ->
+call(UUID, R = #{<<"action">> := <<"backup-", _/binary>>}) ->
     check_call(backup_api, UUID, R);
 
-call(UUID, R = [{<<"action">>, <<"metadata-", _/binary>>} | _]) ->
+call(UUID, R = #{<<"action">> := <<"metadata-", _/binary>>}) ->
     check_call(metadata_api, UUID, R);
 
-call(UUID, R = [{<<"action">>, <<"cluster-", _/binary>>} | _]) ->
+call(UUID, R = #{<<"action">> := <<"cluster-", _/binary>>}) ->
     check_call(grouping_api, UUID, R);
 
-call(UUID, R = [{<<"action">>, <<"stack-", _/binary>>} | _]) ->
+call(UUID, R = #{<<"action">> := <<"stack-", _/binary>>}) ->
     check_call(grouping_api, UUID, R);
 
-call(UUID, R = [{<<"action">>, <<"remote-", _/binary>>} | _]) ->
+call(UUID, R = #{<<"action">> := <<"remote-", _/binary>>}) ->
     check_call(remote_api, UUID, R).
 
 check_call(Type, UUID, R) ->
@@ -33,31 +33,31 @@ check_call(Type, UUID, R) ->
             {error, "disabled"}
     end.
 
-call_(UUID, [{<<"action">>, <<"zfs-list">>}])->
+call_(UUID, #{<<"action">> := <<"zfs-list">>})->
     case chunter_zfs:list(<<"zones/", UUID/binary>>) of
         {ok, Data} ->
-            {ok, [{reply, Data}]};
+            {ok, #{reply => Data}};
         E ->
             lager:warning("[api] zfs-list(~s) failed: ~p", [UUID, E]),
             {error, "failed!"}
     end;
 
-call_(_UUID, [{<<"action">>, <<"remote-stop">>}])->
+call_(_UUID, #{<<"action">> := <<"remote-stop">>})->
     {error, "not implemented!"};
 
-call_(_UUID, [{<<"action">>, <<"remote-start">>}])->
+call_(_UUID, #{<<"action">> := <<"remote-start">>})->
     {error, "not implemented!"};
 
-call_(UUID, [{<<"action">>, <<"snapshot-create">>},
-             {<<"comment">>, Comment}]) ->
+call_(UUID, #{<<"action">> := <<"snapshot-create">>,
+              <<"comment">> := Comment}) ->
     case ls_vm:snapshot(UUID, Comment) of
         {ok, SUUID} ->
-            {ok, [{uuid, SUUID}]};
+            {ok, #{uuid => SUUID}};
         _ ->
             {error, "failed!"}
     end;
 
-call_(UUID, [{<<"action">>, <<"snapshot-list">>}]) ->
+call_(UUID, #{<<"action">> := <<"snapshot-list">>}) ->
     case ls_vm:get(UUID) of
         {ok, V} ->
             {ok, ft_vm:snapshots(V)};
@@ -65,8 +65,8 @@ call_(UUID, [{<<"action">>, <<"snapshot-list">>}]) ->
             {error, "failed!"}
     end;
 
-call_(UUID, [{<<"action">>, <<"snapshot-get">>},
-             {<<"uuid">>, SnapID}]) ->
+call_(UUID, #{<<"action">> := <<"snapshot-get">>,
+              <<"uuid">> := SnapID}) ->
     case ls_vm:get(UUID) of
         {ok, V} ->
             Snaps = ft_vm:snapshots(V),
@@ -80,7 +80,7 @@ call_(UUID, [{<<"action">>, <<"snapshot-get">>},
             {error, "failed!"}
     end;
 
-call_(UUID, [{<<"action">>, <<"metadata-get">>}]) ->
+call_(UUID, #{<<"action">> := <<"metadata-get">>}) ->
     case ls_vm:get(UUID) of
         {ok, V} ->
             {ok, ft_vm:metadata(V)};
@@ -88,8 +88,8 @@ call_(UUID, [{<<"action">>, <<"metadata-get">>}]) ->
             {error, "failed!"}
     end;
 
-call_(UUID, [{<<"action">>, <<"metadata-set">>},
-             {<<"data">>, D}]) ->
+call_(UUID, #{<<"action">> := <<"metadata-set">>,
+              <<"data">> := D}) ->
     case ls_vm:get(UUID) of
         {ok, V} ->
             Size = byte_size(term_to_binary(ft_vm:metadata(V))) +
@@ -106,7 +106,7 @@ call_(UUID, [{<<"action">>, <<"metadata-set">>},
             {error, "failed!"}
     end;
 
-call_(UUID, [{<<"action">>, <<"cluster-get">>}]) ->
+call_(UUID, #{<<"action">> := <<"cluster-get">>}) ->
     case grouping(UUID) of
         {ok, _, G} ->
             {ok, ft_grouping:config(G)};
@@ -114,7 +114,7 @@ call_(UUID, [{<<"action">>, <<"cluster-get">>}]) ->
             E
     end;
 
-call_(UUID, [{<<"action">>, <<"cluster-vms">>}]) ->
+call_(UUID, #{<<"action">> := <<"cluster-vms">>}) ->
     case grouping(UUID) of
         {ok, _, G} ->
             {ok, ft_grouping:elements(G)};
@@ -122,8 +122,8 @@ call_(UUID, [{<<"action">>, <<"cluster-vms">>}]) ->
             E
     end;
 
-call_(UUID, [{<<"action">>, <<"cluster-set">>},
-             {<<"data">>, D}]) ->
+call_(UUID, #{<<"action">> := <<"cluster-set">>,
+              <<"data">> := D}) ->
     case grouping(UUID) of
         {ok, GID, G} ->
             set_grouping_config(GID, G, D);
@@ -131,7 +131,7 @@ call_(UUID, [{<<"action">>, <<"cluster-set">>},
             E
     end;
 
-call_(UUID, [{<<"action">>, <<"stack-get">>}]) ->
+call_(UUID, #{<<"action">> := <<"stack-get">>}) ->
     case stack(UUID) of
         {ok, _, S} ->
             {ok, ft_grouping:config(S)};
@@ -139,7 +139,7 @@ call_(UUID, [{<<"action">>, <<"stack-get">>}]) ->
             E
     end;
 
-call_(UUID, [{<<"action">>, <<"stack-vms">>}]) ->
+call_(UUID, #{<<"action">> := <<"stack-vms">>}) ->
     case stack(UUID) of
         {ok, _, G} ->
             {ok, stack_vms(G)};
@@ -147,9 +147,9 @@ call_(UUID, [{<<"action">>, <<"stack-vms">>}]) ->
             E
     end;
 
-call_(UUID, [{<<"action">>, <<"stack-power">>},
-             {<<"state">>, Action},
-             {<<"vm">>, VM}]) ->
+call_(UUID, #{<<"action">> := <<"stack-power">>,
+              <<"state">> := Action,
+              <<"vm">> := VM}) ->
     case stack(UUID) of
         {ok, _, G} ->
             stack_power(VM, Action, G);
@@ -157,9 +157,9 @@ call_(UUID, [{<<"action">>, <<"stack-power">>},
             E
     end;
 
-call_(UUID, [{<<"action">>, <<"stack-execute">>},
-             {<<"command">>, Command},
-             {<<"vm">>, VM}]) ->
+call_(UUID, #{<<"action">> := <<"stack-execute">>,
+              <<"command">> := Command,
+              <<"vm">> := VM}) ->
     case stack(UUID) of
         {ok, _, G} ->
             stack_execute(VM, Command, G);
@@ -167,8 +167,8 @@ call_(UUID, [{<<"action">>, <<"stack-execute">>},
             E
     end;
 
-call_(UUID, [{<<"action">>, <<"stack-set">>},
-             {<<"data">>, D}]) ->
+call_(UUID, #{<<"action">> := <<"stack-set">>,
+              <<"data">> := D}) ->
     case stack(UUID) of
         {ok, GID, G} ->
             set_grouping_config(GID, G, D);
@@ -176,7 +176,7 @@ call_(UUID, [{<<"action">>, <<"stack-set">>},
             E
     end;
 
-call_(UUID, [{<<"action">>, <<"backup-list">>}]) ->
+call_(UUID, #{<<"action">> := <<"backup-list">>}) ->
     case ls_vm:get(UUID) of
         {ok, V} ->
             {ok, ft_vm:backups(V)};
@@ -184,9 +184,9 @@ call_(UUID, [{<<"action">>, <<"backup-list">>}]) ->
             {error, "failed!"}
     end;
 
-call_(UUID, [{<<"action">>, <<"backup-create">>},
-             {<<"comment">>, Comment},
-             {<<"delete">>, Delete}]) ->
+call_(UUID, #{<<"action">> := <<"backup-create">>,
+              <<"comment">> := Comment,
+              <<"delete">> := Delete}) ->
     Opts = case Delete of
                true ->
                    [delete, xml];
@@ -200,10 +200,10 @@ call_(UUID, [{<<"action">>, <<"backup-create">>},
             {error, "failed!"}
     end;
 
-call_(UUID, [{<<"action">>, <<"backup-create">>},
-             {<<"comment">>, Comment},
-             {<<"delete">>, Delete},
-             {<<"parent">>, Parent}]) ->
+call_(UUID, #{<<"action">> := <<"backup-create">>,
+              <<"comment">> := Comment,
+              <<"delete">> := Delete,
+              <<"parent">> := Parent}) ->
     Opts = case Delete of
                true ->
                    [delete, xml];
@@ -282,10 +282,11 @@ enabled(Action) ->
 
 stack_vms(Stack) ->
     Clusters = ft_grouping:elements(Stack),
-    [{UUID, grouping_elements(UUID)} || UUID <- Clusters].
+    maps:from_list([{UUID, grouping_elements(UUID)}
+                    || UUID <- Clusters]).
 
 stack_vms_flat(Stack) ->
-    Res = [VMs || {_, VMs} <- stack_vms(Stack)],
+    Res = [VMs || {_, VMs} <- maps:to_list(stack_vms(Stack))],
     lists:usort(lists:flatten(Res)).
 
 grouping_elements(UUID) ->
@@ -336,8 +337,8 @@ stack_execute(VM, Command) ->
 stack_execute(Host, Port, VM, Command) ->
     case libchunter:execute(Host, Port, VM, Command, <<>>, fun fold_reply/2) of
         {ok, ExitCode, Reply} ->
-            {ok, [{<<"exit_code">>, ExitCode},
-                  {<<"output">>, Reply}]};
+            {ok, #{<<"exit_code">> => ExitCode,
+                   <<"output">> => Reply}};
         E ->
             E
     end.
@@ -350,16 +351,16 @@ fold_reply(Acc, _) ->
     Acc.
 stack_power(VM, <<"start">>) ->
     ls_vm:start(VM),
-    {ok, [{<<"reply">>, <<"starting">>}]};
+    {ok, #{<<"reply">> => <<"starting">>}};
 stack_power(VM, <<"stop">>) ->
     ls_vm:stop(VM),
-    {ok, [{<<"reply">>, <<"stopping">>}]};
+    {ok, #{<<"reply">> => <<"stopping">>}};
 stack_power(VM, <<"force-stop">>) ->
     ls_vm:stop(VM, [force]),
-    {ok, [{<<"reply">>, <<"stopping">>}]};
+    {ok, #{<<"reply">> => <<"stopping">>}};
 stack_power(VM, <<"reboot">>) ->
     ls_vm:reboot(VM),
-    {ok, [{<<"reply">>, <<"rebooting">>}]};
+    {ok, #{<<"reply">> => <<"rebooting">>}};
 stack_power(VM, <<"force-reboot">>) ->
     ls_vm:reboot(VM, [force]),
-    {ok, [{<<"reply">>, <<"rebooting">>}]}.
+    {ok, #{<<"reply">> => <<"rebooting">>}}.

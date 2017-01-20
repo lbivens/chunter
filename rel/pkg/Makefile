@@ -1,4 +1,4 @@
-VERSION=0.8.3p5
+VERSION=0.9.0
 COMPONENT=chunter
 SUFFIX:=$(shell echo $(SUFFIX))
 BASENAME:=$(COMPONENT)-$(VERSION)$(SUFFIX)
@@ -7,9 +7,14 @@ BASENAME:=$(COMPONENT)-$(VERSION)$(SUFFIX)
 clean:
 	rm *.gz
 
-package:
+
+
+package: 
 	cp install.sh $(BASENAME)
 	cp -r ../../_build/prod/rel/$(COMPONENT) $(COMPONENT)
+	mkdir $(COMPONENT)/share/lib
+	cp /opt/local/lib/libncurses.so.6 $(COMPONENT)/share/lib/libncurses.so.6
+	cp /opt/local/lib/libcrypto.so.1.0.0 $(COMPONENT)/share/lib/libcrypto.so.1.0.0
 	tar -cf $(BASENAME).tar $(COMPONENT)
 	rm -rf $(COMPONENT)
 	uuencode $(BASENAME).tar $(BASENAME).tar >> $(BASENAME)

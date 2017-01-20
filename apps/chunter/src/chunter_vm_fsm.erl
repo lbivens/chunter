@@ -407,7 +407,6 @@ initialized({restore, SnapID, Options},
             State1 = State#state{orig_state=loading,
                                  type = Type, zone_type = ZoneType,
                                  args={SnapID, Options, Path, Toss}},
-            vm_event(UUID,  <<"vm-restored">>),
             restoring_backup(next, State1);
         E ->
             R = chunter_lock:release(UUID),
@@ -502,10 +501,10 @@ restoring_backup(next, State =
                      fun finish_delete_snapshot/4, Options)
      || Snap <- Toss],
     libhowl:send(VM,
-                 [{<<"event">>, <<"backup">>},
-                  {<<"data">>,
-                   [{<<"action">>, <<"restored">>},
-                    {<<"uuid">>, SnapID}]}]),
+                 #{<<"event">> => <<"backup">>,
+                   <<"data">> => #{
+                       <<"action">> => <<"restored">>,
+                       <<"uuid">> => SnapID}}),
     timer:send_after(500, get_info),
     %% The restored dataset does not have the correct quota,
     %% we reapply the package to make sure it is applied.
@@ -635,11 +634,11 @@ handle_event({force_state, NextState}, StateName,
 handle_event(register, StateName, State = #state{uuid = UUID}) ->
     ls_vm:register(UUID, State#state.hypervisor),
     %%    change_state(State#state.uuid, atom_to_binary(StateName)),
-    case load_vm(UUID) of
+    case chunter_zone:get(UUID) of
         {error, not_found} ->
             lager:debug("[~s] Stopping in load, notfound.", [State#state.uuid]),
             {stop, {shutdown, not_found}, State};
-        VMData ->
+        {ok, VMData} ->
             snapshot_sizes(UUID),
             timer:send_after(500, get_info),
             SniffleData = chunter_spec:to_sniffle(VMData),
@@ -667,12 +666,12 @@ handle_event(register, StateName, State = #state{uuid = UUID}) ->
 
 handle_event({update, undefined, Config}, StateName,
              State = #state{uuid = UUID}) ->
-    case load_vm(UUID) of
+    case chunter_zone:get(UUID) of
         {error, not_found} ->
             lager:debug("[~s] Stopping in update, notfound.",
                         [State#state.uuid]),
             {stop, {shutdown, not_found}, State};
-        VMData ->
+        {ok, VMData} ->
             Update = chunter_spec:create_update(VMData, undefined, Config),
             case chunter_vmadm:update(UUID, Update) of
                 ok ->
@@ -689,12 +688,12 @@ handle_event({update, undefined, Config}, StateName,
 
 handle_event({update, Package, Config}, StateName,
              State = #state{uuid = UUID}) ->
-    case load_vm(UUID) of
+    case chunter_zone:get(UUID) of
         {error, not_found} ->
             lager:debug("[~s] Stopping in update, notfound.",
                         [State#state.uuid]),
             {stop, {shutdown, not_found}, State};
-        VMData ->
+        {ok, VMData} ->
             P = ft_package:to_json(Package),
             Update = chunter_spec:create_update(VMData, P, Config),
             case chunter_vmadm:update(UUID, Update) of
@@ -719,10 +718,10 @@ handle_event(remove, _StateName, State) ->
 
 handle_event(delete, _StateName, State = #state{uuid = UUID}) ->
     lager:debug("[~s] Calling delete.", [State#state.uuid]),
-    case load_vm(UUID) of
+    case chunter_zone:get(UUID) of
         {error, not_found} ->
             ok;
-        _VM ->
+        {ok, _VM} ->
             chunter_vmadm:delete(UUID),
             lager:info("Deleting ~s successfull, letting sniffle know.",
                        [UUID]),
@@ -734,14 +733,13 @@ handle_event(delete, _StateName, State = #state{uuid = UUID}) ->
 
 handle_event(store, _StateName, State = #state{uuid = UUID}) ->
     lager:debug("[~s] Calling delete to store VM.", [State#state.uuid]),
-    case load_vm(UUID) of
+    case chunter_zone:get(UUID) of
         {error, not_found} ->
             ok;
-        _VM ->
+        {ok, _VM} ->
             chunter_vmadm:delete(UUID),
             lager:info("Deleting ~s successfull, letting sniffle know.",
                        [UUID]),
-            vm_event(UUID,  <<"vm-stored">>),
             ensure_state(UUID, <<"stored">>)
     end,
     wait_for_delete(UUID),
@@ -757,7 +755,9 @@ handle_event(update_fw, StateName,
             NewRules = ft_vm:fw_rules(VM),
             NewRules1 = [fwadm:convert(UUID, R) || R <- NewRules],
             NewRules2 = lists:flatten(NewRules1),
-            OldRules1 = [map_rule(R) || R <- OldRules],
+            OldRules1 = [{UUIDr, Rule} ||
+                            #{<<"uuid">> := UUIDr, <<"rule">> := Rule}
+                                <- OldRules],
             {Add, Delete} = split_rules(OldRules1, NewRules2),
             lager:info("[vm:~s(~s)] Updating FW rules, adding ~p deleting ~p.",
                        [UUID, Owner, Add, Delete]),
@@ -830,23 +830,23 @@ handle_sync_event({door, Ref, Data}, _From, StateName,
 handle_sync_event({door, Ref, Data}, _From, StateName,
                   State = #state{api_ref=Ref, uuid=UUID}) ->
     lager:info("[zone:~s] API: ~s", [UUID, Data]),
-    try jsx:decode(Data) of
+    try jsone:decode(Data) of
         JSON ->
             JSON1 = jsxd:from_list(JSON),
             Reply = case chunter_api:call(UUID, JSON1) of
                         {ok, D} ->
-                            Bin = jsx:encode(D),
+                            Bin = jsone:encode(D),
                             {ok, <<$1, Bin/binary>>};
                         {error, E} ->
                             lager:warning("[zdoor] error: ~p", [E]),
-                            RJSON = jsx:encode([{error, list_to_binary(E)}]),
+                            RJSON = jsone:encode([{error, list_to_binary(E)}]),
                             {ok, <<$0, RJSON/binary>>}
                     end,
             {reply, Reply, StateName, State}
     catch
         _:_ ->
             lager:warning("[zdoor] error: ~p", [Data]),
-            RJSON = jsx:encode([{error,  <<"format error: ", Data/binary>>}]),
+            RJSON = jsone:encode([{error,  <<"format error: ", Data/binary>>}]),
             Reply = {ok, <<$0, RJSON/binary>>},
             {reply, Reply, StateName, State}
     end;
@@ -921,13 +921,13 @@ handle_sync_event({snapshot, rollback, SnapID}, _From, StateName, State) ->
     {reply, ok, rolling_back_snapshot, State1};
 
 handle_sync_event(delete, _From, StateName, State) ->
-    case load_vm(State#state.uuid) of
+    case chunter_zone:get(State#state.uuid) of
         {error, not_found} ->
             lager:debug("[~s] Delete sync event.", [State#state.uuid]),
             {stop, {shutdown, not_found}, State};
-        _VM ->
+        {ok, _VM} ->
             spawn(chunter_vmadm, delete, [State#state.uuid]),
-            libhowl:send(State#state.uuid, [{<<"event">>, <<"delete">>}]),
+            libhowl:send(State#state.uuid, #{<<"event">> => <<"delete">>}),
             {reply, ok, StateName, State}
     end;
 
@@ -1101,13 +1101,13 @@ finish_snapshot(VM, SnapID, _, ok) ->
     snap_state(VM, SnapID, <<"completed">>),
     {ok, VmData} = ls_vm:get(VM),
     Snaps = ft_vm:snapshots(VmData),
-    TheSnap = proplists:get_value(SnapID, Snaps),
+    {ok, TheSnap} = jsxd:get(SnapID, Snaps),
     libhowl:send(VM,
-                 [{<<"event">>, <<"snapshot">>},
-                  {<<"data">>,
-                   [{<<"uuid">>, SnapID},
-                    {<<"action">>, <<"completed">>}] ++
-                   [{<<"data">>, TheSnap}]}]),
+                 #{<<"event">> => <<"snapshot">>,
+                   <<"data">> => #{
+                       <<"uuid">> => SnapID,
+                       <<"action">> => <<"completed">>,
+                       <<"data">> => TheSnap}}),
     ok;
 
 finish_snapshot(_VM, _SnapID, _, error) ->
@@ -1123,11 +1123,11 @@ do_delete_snapshot(<<_:1/binary, P/binary>>, _VM, SnapID, _) ->
 finish_delete_snapshot(VM, SnapID, _, ok) ->
     lager:debug("Deleting ~p", [SnapID]),
     ls_vm:set_snapshot(VM, [{[SnapID], delete}]),
-    libhowl:send(VM,
-                 [{<<"event">>, <<"snapshot">>},
-                  {<<"data">>,
-                   [{<<"action">>, <<"deleted">>},
-                    {<<"uuid">>, SnapID}]}]),
+    libhowl:send(VM, #{
+                   <<"event">> => <<"snapshot">>,
+                   <<"data">> => #{
+                       <<"action">> => <<"deleted">>,
+                       <<"uuid">> => SnapID}}),
     ok;
 
 finish_delete_snapshot(_VM, _SnapID, _, error) ->
@@ -1137,11 +1137,11 @@ do_rollback_snapshot(<<_:1/binary, P/binary>>, _VM, SnapID, _) ->
     chunter_zfs:rollback(P, SnapID, [r]).
 
 finish_rollback_snapshot(VM, SnapID, _, ok) ->
-    libhowl:send(VM,
-                 [{<<"event">>, <<"snapshot">>},
-                  {<<"data">>,
-                   [{<<"action">>, <<"rollback">>},
-                    {<<"uuid">>, SnapID}]}]),
+    libhowl:send(VM, #{
+                   <<"event">> => <<"snapshot">>,
+                   <<"data">> => #{
+                       <<"action">> => <<"rollback">>,
+                       <<"uuid">> => SnapID}}),
     lager:debug("[Snapshot] committing rollback fo snapshot ~s on VM ~s.",
                 [VM, SnapID]),
     ls_vm:commit_snapshot_rollback(VM, SnapID);
@@ -1222,10 +1222,10 @@ snapshot_action(VM, UUID, Fun, Opts) ->
     snapshot_action(VM, UUID, Fun, fun(_, _, _, _) -> ok end, Opts).
 
 snapshot_action(VM, UUID, Fun, CompleteFun, Opts) ->
-    case load_vm(VM) of
+    case chunter_zone:get(VM) of
         {error, not_found} ->
             ok;
-        VMData ->
+        {ok, VMData} ->
             Spec = chunter_spec:to_sniffle(VMData),
             snapshot_action1(VM, Spec, UUID, Fun, CompleteFun, Opts)
     end.
@@ -1265,12 +1265,12 @@ snapshot_action2(VM, Spec, UUID, R0, Fun, CompleteFun, Opts) ->
             ls_vm:log(VM, iolist_to_binary(M)),
             CompleteFun(VM, UUID, Opts, ok);
         {error, E} ->
-            libhowl:send(VM,
-                         [{<<"event">>, <<"snapshot">>},
-                          {<<"data">>,
-                           [{<<"action">>, <<"error">>},
-                            {<<"message">>, E},
-                            {<<"uuid">>, UUID}]}]),
+            libhowl:send(VM, #{
+                           <<"event">> => <<"snapshot">>,
+                           <<"data">> => #{
+                               <<"action">> => <<"error">>,
+                               <<"message">> => E,
+                               <<"uuid">> => UUID}}),
             lager:error("Snapshot failed with: ~p", E),
             CompleteFun(VM, UUID, Opts, error)
     end.
@@ -1282,16 +1282,16 @@ snapshot_sizes(VM) ->
             lager:warning("[~s] No Servers to update snapshots.", [VM]),
             ok;
         {_, {ok, V}} ->
-            Snaps = case load_vm(VM) of
+            Snaps = case chunter_zone:get(VM) of
                         {error, not_found} ->
                             [];
-                        VMData ->
+                        {ok, VMData} ->
                             Spec = chunter_spec:to_sniffle(VMData),
                             chunter_snap:get_all(VM, Spec)
                     end,
             %% First we look at backups
             Bs = ft_vm:backups(V),
-            KnownB = [ ID || {ID, _} <- Bs],
+            KnownB = maps:keys(Bs),
             Backups1 = lists:filter(fun ({Name, _}) ->
                                             lists:member(Name, KnownB)
                                     end, Snaps),
@@ -1305,7 +1305,7 @@ snapshot_sizes(VM) ->
 
             %% And then at sanpshots
             Ss = ft_vm:snapshots(V),
-            KnownS = [ ID || {ID, _} <- Ss],
+            KnownS = maps:keys(Ss),
             Snaps1 =lists:filter(fun ({Name, _}) ->
                                          lists:member(Name, KnownS)
                                  end, Snaps),
@@ -1347,10 +1347,6 @@ do_destroy(<<_:1/binary, P/binary>>, _VM, _SnapID, _) ->
 %%% Utility
 %%%===================================================================
 
--spec load_vm(ZUUID::fifo:uuid()) -> fifo:vm_config() | {error, not_found}.
-
-load_vm(UUID) ->
-    chunter_zone:get(UUID).
 
 -spec change_state(UUID::binary(), State::fifo:vm_state()) -> fifo:vm_state().
 
@@ -1368,7 +1364,7 @@ change_state(UUID, State, true) ->
 change_state(UUID, State, false) ->
     lager:debug("[~s] Changing state: ~s", [UUID, State]),
     ensure_state(UUID, State),
-    libhowl:send(UUID, [{<<"event">>, <<"state">>}, {<<"data">>, State}]),
+    libhowl:send(UUID, #{<<"event">> => <<"state">>, <<"data">> => State}),
     State.
 ensure_state(UUID, State) ->
     ensure_state(UUID, State, 10).
@@ -1403,12 +1399,12 @@ atom_to_binary(A) ->
 
 backup_update(VM, SnapID, K, V) ->
     ls_vm:set_backup(VM, [{[SnapID, K], V}]),
-    libhowl:send(VM,
-                 [{<<"event">>, <<"backup">>},
-                  {<<"data">>,
-                   [{<<"action">>, <<"update">>},
-                    {<<"data">>, [{K, V}]},
-                    {<<"uuid">>, SnapID}]}]).
+    libhowl:send(VM, #{
+                   <<"event">> => <<"backup">>,
+                   <<"data">> => #{
+                       <<"action">> => <<"update">>,
+                       <<"data">> => maps:from_list([{K, V}]),
+                       <<"uuid">> => SnapID}}).
 update_services(_, []) ->
     ok;
 
@@ -1417,8 +1413,9 @@ update_services(UUID, Changed) ->
         [] ->
             ok;
         Changed1 ->
-            libhowl:send(UUID, [{<<"event">>, <<"services">>},
-                                {<<"data">>, Changed1}])
+            libhowl:send(UUID, #{
+                           <<"event">> => <<"services">>,
+                           <<"data">> => Changed1})
     end.
 
 wait_import(<<_:1/binary, P/binary>>) ->
@@ -1502,14 +1499,6 @@ split_rules([{UUID, Rule} | OldRules], NewRules, Add, Delete) ->
         false ->
             split_rules(OldRules, NewRules, Add, [UUID | Delete])
     end.
-
--spec map_rule([{binary(), binary() | fifo:smartos_fw_rule()}]) ->
-                      {binary(), fifo:smartos_fw_rule()}.
-map_rule(JSX) ->
-    %% We need proplists or dialyzer will insist it's a not a rule.
-    UUID = proplists:get_value(<<"uuid">>, JSX),
-    Rule = proplists:get_value(<<"rule">>, JSX),
-    {UUID, Rule}.
 
 
 create_ipkg(Dataset, Package, VMSpec, State = #state{uuid = UUID}) ->
@@ -1618,17 +1607,19 @@ snaps_to_toss(Path, Remote, SnapID) ->
     [T || T <- Toss0, T =/= SnapID].
 
 finalize_update(UUID) ->
-    VMData = load_vm(UUID),
+    {ok, VMData} = chunter_zone:get(UUID),
     chunter_server:update_mem(),
     SniffleData = chunter_spec:to_sniffle(VMData),
+    howl_update(UUID, [{<<"config">>, SniffleData}]),
     ls_vm:set_config(UUID, SniffleData),
     ls_vm:log(UUID, <<"Update complete.">>),
     SniffleData.
 
 
 howl_update(UUID, Data) ->
-    libhowl:send(UUID, [{<<"event">>, <<"update">>},
-                        {<<"data">>, Data}]).
+    libhowl:send(UUID, #{
+                   <<"event">> => <<"update">>,
+                   <<"data">> => Data}).
 
 do_create(UUID, CreateJSON, VMSpec) ->
     change_state(UUID, <<"creating">>),
@@ -1660,10 +1651,3 @@ update_timeout(UUID) ->
     T = erlang:system_time(milli_seconds) + 60000,
     chunter_vmadm:update(UUID, [{<<"set_internal_metadata">>,
                                  [{<<"docker:wait_for_attach">>, T}]}]).
-
-vm_event(UUID, Event) ->
-    libhowl:send(<<"command">>,
-                 [{<<"event">>, Event},
-                  {<<"uuid">>, fifo_utils:uuid()},
-                  {<<"data">>,
-                   [{<<"uuid">>, UUID}]}]).

@@ -93,30 +93,33 @@
 %%% Internal functions
 %%%===================================================================
 
--spec load(VM::fifo:vm_config()) -> fifo:vm_config().
+-spec load(VM::fifo:vm_config()) -> fifo:vm_config() | {error, not_found}.
 
-load(VM) ->
-    Name = proplists:get_value(<<"name">>, VM),
-    Res = convert(<<"/etc/zones/", Name/binary, ".xml">>, VM),
+load(#{<<"name">> := Name} = VM) ->
+    Res = convert(<<"/etc/zones/", Name/binary, ".xml">>, maps:to_list(VM)),
     RouteFile = <<"/zones/", Name/binary, "/config/routes.json">>,
     case filelib:is_file(RouteFile) of
         false ->
             Res;
         true ->
             {ok, Routes} = file:read_file(RouteFile),
-            RoutesJSON = jsx:decode(Routes),
+            RoutesJSON = jsone:decode(Routes),
             jsxd:set(<<"routes">>, RoutesJSON, Res)
     end.
 
--spec convert(Name::binary(), VM::fifo:vm_config()) -> fifo:vm_config().
+-spec convert(Name::binary(), VM::[{binary(), term()}]) ->
+                     {ok, fifo:vm_config()} |
+                     {error, not_found} |
+                     {error, atom()}.
 
 convert(F, VM)->
     case file:read_file(F) of
         {ok, XML}  ->
             case erlsom:simple_form(XML) of
                 {ok, {"zone", Attrs, Value}, _}->
-                    jsxd:from_list(create_zone_data(VM ++ map_attrs(Attrs)
-                                                    ++ parse_xml(Value)));
+                    jsxd:from_list(create_zone_data(
+                                     VM ++ map_attrs(Attrs)
+                                     ++ parse_xml(Value)));
                 Err->
                     Err
             end;
@@ -182,7 +185,8 @@ map_attrs(Attrs) ->
               end, Attrs).
 
 
--spec create_zone_data(Data::[{atom()|binary(), term()}]) -> fifo:vm_config().
+-spec create_zone_data(Data::[{atom()|binary(), term()}]) ->
+                              [{binary(), term()}].
 create_zone_data(Data) ->
     create_zone_data(Data, [], [], []).
 
@@ -233,6 +237,7 @@ create_zone_data([{<<"dataset">>, Dataset}|R], Disks, Nics, Datasets) ->
 ?RENAME_INT(<<"virtio-txburst">>, <<"virtio_txburst">>);
 ?RENAME_INT(<<"virtio-txtimer">>, <<"virtio_txtimer">>);
 ?RENAME_BOOL(<<"vm-autoboot">>, <<"vm_autoboot">>);
+?RENAME_BOOL(<<"maintain-resolvers">>, <<"maintain_resolvers">>);
 ?RENAME_B64(<<"vnc-password">>, <<"vnc_password">>);
 ?RENAME_INT(<<"vnc-port">>, <<"vnc_port">>);
 ?RENAME_INT(<<"zoneid">>, <<"zoneid">>);

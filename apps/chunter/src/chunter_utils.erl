@@ -15,7 +15,7 @@ sysinfo() ->
     case system() of
         smartos ->
             BinResponse = list_to_binary(os:cmd("sysinfo")),
-            SysInfo0 = jsxd:from_list(jsx:decode(BinResponse)),
+            SysInfo0 = jsone:decode(BinResponse),
             SysInfo = jsxd:delete([<<"Boot Parameters">>, <<"root_shadow">>],
                                   SysInfo0),
             {ok, SysInfo};

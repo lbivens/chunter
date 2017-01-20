@@ -117,7 +117,7 @@ delete(UUID) ->
                  lager:debug("[vmadm] ~s", [R]),
                  R;
              S when S =:= omnios; S =:= solaris ->
-                 VM = chunter_zone:get(UUID),
+                 {ok, VM} =  chunter_zone:get(UUID),
                  force_stop(UUID),
                  lager:info("zoneadm:uninstall - UUID: ~s / ~p.", [UUID, VM]),
                  zoneadm(UUID, uninstall),
@@ -134,8 +134,6 @@ delete(UUID) ->
 
 -spec info(UUID::fifo:uuid()) -> fifo:config_list().
 
-%% JSX is spected badly for the jsx:decode so we ignore this function!
--dialyzer({nowarn_function, decode_info/1}).
 info(UUID) ->
     case chunter_utils:system() of
         smartos ->
@@ -151,11 +149,12 @@ decode_info("Unable" ++ _) ->
     {error, no_info};
 
 decode_info(JSON) ->
-    case jsx:decode(list_to_binary(JSON)) of
-        {incomplete, _} ->
-            {error, no_info};
+    try jsone:decode(list_to_binary(JSON)) of
         R ->
             {ok, R}
+    catch
+        _:_ ->
+            {error, no_info}
     end.
 
 -spec stop(UUID::fifo:uuid()) -> list().
@@ -239,15 +238,10 @@ create(UUID, Data) ->
     Res = case wait_for_text(Port, UUID, 60*10) of
               ok ->
                   lager:info("vmadm:create - vmadm returned sucessfully.", []),
-                  libhowl:send(<<"command">>,
-                               [{<<"event">>, <<"vm-create">>},
-                                {<<"uuid">>, fifo_utils:uuid()},
-                                {<<"data">>,
-                                 [{<<"uuid">>, UUID}]}]),
                   chunter_vm_fsm:load(UUID);
               {error, E} ->
-                  delete(UUID),
                   lager:error("vmad:create - Failed: ~p.", [E]),
+                  delete(UUID),
                   {error, E}
           end,
     lager:info("vmadm:create - updating memory.", []),
@@ -329,5 +323,5 @@ relock(Lock) ->
 port_json(Cmd, JSON) ->
     Port = open_port({spawn, Cmd}, [use_stdio, binary, {line, 1000},
                                     stderr_to_stdout, exit_status]),
-    port_command(Port, jsx:encode(JSON)),
+    port_command(Port, jsone:encode(JSON)),
     Port.

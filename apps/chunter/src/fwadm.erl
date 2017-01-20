@@ -24,11 +24,13 @@ add(Owner, VM, Rule) ->
     RuleB = list_to_binary(build(Rule)),
     Desc = base64:encode(term_to_binary({VM, Rule})),
     File = os:cmd("mktemp") -- "\n",
-    JSON = [{description, <<"fifo:", Desc/binary>>},
-            {enabled, true},
-            {owner_uuid, Owner},
-            {rule, RuleB}],
-    case file:write_file(File, jsx:encode(JSON)) of
+    JSON = #{
+      description => <<"fifo:", Desc/binary>>,
+      enabled => true,
+      owner_uuid => Owner,
+      rule => RuleB
+     },
+    case file:write_file(File, jsone:encode(JSON)) of
         ok ->
             extract_uuid(fwadm("add", [{file, File}]));
         E ->
@@ -45,7 +47,7 @@ delete(UUID) ->
 list() ->
     case fwadm("list", [json]) of
         {ok, JSON} ->
-            {ok, [convert_to_fifo(E) || E <- jsx:decode(JSON)]};
+            {ok, [convert_to_fifo(E) || E <- jsone:decode(JSON)]};
         E ->
             E
     end.
@@ -158,18 +160,14 @@ is_fifo(JSX) ->
     end.
 
 
-convert_to_fifo(R) ->
-    JSXD = jsxd:from_list(R),
-    case jsxd:get(<<"description">>, JSXD) of
-        {ok, <<"fifo:", Base64/binary>>} ->
-            {VM, Rule} = decode_fifo(Base64),
-            JSXD1 = jsxd:thread([{delete, <<"description">>},
-                                 {set, <<"vm">>, VM}],
-                                JSXD),
-            lists:sort([{<<"rule">>, Rule} | JSXD1]);
-        _ ->
-            JSXD
-    end.
+convert_to_fifo(JSXD = #{<<"description">> := <<"fifo:", Base64/binary>>}) ->
+    {VM, Rule} = decode_fifo(Base64),
+    jsxd:thread([{delete, <<"description">>},
+                 {set, <<"vm">>, VM},
+                 {set, <<"rule">>, Rule}],
+                JSXD);
+convert_to_fifo(JSXD) ->
+    JSXD.
 
 -spec decode_fifo(binary()) ->
                          {fifo:vm_id(), fifo:smartos_fw_rule()}.

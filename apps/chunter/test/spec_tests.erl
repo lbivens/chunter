@@ -9,7 +9,7 @@ type_test() ->
     InD = jsxd:from_list([{<<"type">>, <<"zone">>}, {<<"uuid">>, <<"d">>}]),
     InO = jsxd:from_list([{<<"alias">>, <<"a">>}, {<<"hostname">>, <<"h">>}, {<<"uuid">>, <<"z">>}]),
     In = apply_defaults(InP, InD, InO),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(to_vmadm(InP, InD, InO)))).
+    ?assertEqual(In, to_sniffle(to_vmadm(InP, InD, InO))).
 
 autoboot_test() ->
     InP = jsxd:from_list([{<<"cpu_cap">>, 100}, {<<"uuid">>, <<"p">>}, {<<"quota">>, 10}, {<<"ram">>, 0}]),
@@ -18,7 +18,7 @@ autoboot_test() ->
                           {<<"uuid">>, <<"z">>}, {<<"autoboot">>, false}]),
     In0 = apply_defaults(InP, InD, InO),
     In = jsxd:set(<<"autoboot">>, false, In0),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(to_vmadm(InP, InD, InO)))).
+    ?assertEqual(In, to_sniffle(to_vmadm(InP, InD, InO))).
 
 disk_driver_test() ->
     InP = jsxd:from_list([{<<"cpu_cap">>, 100}, {<<"uuid">>, <<"p">>}, {<<"quota">>, 10}, {<<"ram">>, 0}]),
@@ -26,7 +26,7 @@ disk_driver_test() ->
                           {<<"disk_driver">>, <<"virtio">>}]),
     InO = jsxd:from_list([{<<"uuid">>, <<"z">>}]),
     In = apply_defaults_kvm(InP, InD, InO),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(to_vmadm(InP, InD, InO)))).
+    ?assertEqual(In, to_sniffle(to_vmadm(InP, InD, InO))).
 
 created_at_test() ->
     InP = jsxd:from_list([{<<"cpu_cap">>, 100}, {<<"uuid">>, <<"p">>}, {<<"quota">>, 10}, {<<"ram">>, 0}]),
@@ -35,7 +35,7 @@ created_at_test() ->
     In0 = apply_defaults_kvm(InP, InD, InO),
     In = jsxd:set(<<"created_at">>, 123, In0),
     VMData = jsxd:set(<<"created_at">>, 123, to_vmadm(InP, InD, InO)),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(VMData))).
+    ?assertEqual(In, to_sniffle(VMData)).
 
 
 nic_driver_test() ->
@@ -44,7 +44,7 @@ nic_driver_test() ->
                           {<<"nic_driver">>, <<"virtio">>}]),
     InO = jsxd:from_list([{<<"uuid">>, <<"z">>}]),
     In = apply_defaults_kvm(InP, InD, InO),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(to_vmadm(InP, InD, InO)))).
+    ?assertEqual(In, to_sniffle(to_vmadm(InP, InD, InO))).
 
 zone_ram_test() ->
     InP = jsxd:from_list([{<<"cpu_cap">>, 100}, {<<"uuid">>, <<"p">>}, {<<"quota">>, 10}, {<<"ram">>, 1024}]),
@@ -53,49 +53,49 @@ zone_ram_test() ->
     In = apply_defaults(InP, InD, InO),
     VMData = to_vmadm(InP, InD, InO),
     VMData1 = jsxd:set(<<"max_physical_memory">>, 1024*1024*1024, VMData),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(VMData1))).
+    ?assertEqual(In, to_sniffle(VMData1)).
 
 kvm_ram_test() ->
     InP = jsxd:from_list([{<<"cpu_cap">>, 100}, {<<"uuid">>, <<"p">>}, {<<"quota">>, 10}, {<<"ram">>, 1024}]),
     InD = jsxd:from_list([{<<"type">>, <<"kvm">>}, {<<"image_size">>, 10}, {<<"uuid">>, <<"d">>}]),
     InO = jsxd:from_list([{<<"uuid">>, <<"z">>}]),
     In = apply_defaults_kvm(InP, InD, InO),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(to_vmadm(InP, InD, InO)))).
+    ?assertEqual(In, to_sniffle(to_vmadm(InP, InD, InO))).
 
 kvm_cpu_cap1_test() ->
     InP = jsxd:from_list([ {<<"uuid">>, <<"p">>}, {<<"quota">>, 10}, {<<"ram">>, 0}, {<<"cpu_cap">>, 100}]),
     InD = jsxd:from_list([{<<"type">>, <<"kvm">>}, {<<"image_size">>, 10}, {<<"uuid">>, <<"d">>}]),
     InO = jsxd:from_list([{<<"uuid">>, <<"z">>}]),
     In = apply_defaults_kvm(InP, InD, InO),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(to_vmadm(InP, InD, InO)))).
+    ?assertEqual(In, to_sniffle(to_vmadm(InP, InD, InO))).
 
 kvm_cpu_cap14_test() ->
     InP = jsxd:from_list([{<<"uuid">>, <<"p">>}, {<<"quota">>, 10}, {<<"ram">>, 0}, {<<"cpu_cap">>, 140}]),
     InD = jsxd:from_list([{<<"type">>, <<"kvm">>}, {<<"image_size">>, 10}, {<<"uuid">>, <<"d">>}]),
     InO = jsxd:from_list([{<<"uuid">>, <<"z">>}]),
     In = apply_defaults_kvm(InP, InD, InO, 140, 2),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(to_vmadm(InP, InD, InO)))).
+    ?assertEqual(In, to_sniffle(to_vmadm(InP, InD, InO))).
 
 kvm_cpu_cap15_test() ->
     InP = jsxd:from_list([{<<"uuid">>, <<"p">>}, {<<"quota">>, 10}, {<<"ram">>, 0}, {<<"cpu_cap">>, 150}]),
     InD = jsxd:from_list([{<<"type">>, <<"kvm">>}, {<<"image_size">>, 10}, {<<"uuid">>, <<"d">>}]),
     InO = jsxd:from_list([{<<"uuid">>, <<"z">>}]),
     In = apply_defaults_kvm(InP, InD, InO, 150, 2),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(to_vmadm(InP, InD, InO)))).
+    ?assertEqual(In, to_sniffle(to_vmadm(InP, InD, InO))).
 
 kvm_cpu_cap2_test() ->
     InP = jsxd:from_list([{<<"uuid">>, <<"p">>}, {<<"quota">>, 10}, {<<"ram">>, 0}, {<<"cpu_cap">>, 200}]),
     InD = jsxd:from_list([{<<"type">>, <<"kvm">>}, {<<"image_size">>, 10}, {<<"uuid">>, <<"d">>}]),
     InO = jsxd:from_list([{<<"uuid">>, <<"z">>}]),
     In = apply_defaults_kvm(InP, InD, InO, 200, 2),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(to_vmadm(InP, InD, InO)))).
+    ?assertEqual(In, to_sniffle(to_vmadm(InP, InD, InO))).
 
 kvm_cpu_cap21_test() ->
     InP = jsxd:from_list([{<<"uuid">>, <<"p">>}, {<<"quota">>, 10}, {<<"ram">>, 0}, {<<"cpu_cap">>, 210}]),
     InD = jsxd:from_list([{<<"type">>, <<"kvm">>}, {<<"image_size">>, 10}, {<<"uuid">>, <<"d">>}]),
     InO = jsxd:from_list([{<<"uuid">>, <<"z">>}]),
     In = apply_defaults_kvm(InP, InD, InO, 210, 3),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(to_vmadm(InP, InD, InO)))).
+    ?assertEqual(In, to_sniffle(to_vmadm(InP, InD, InO))).
 
 
 resolver_test() ->
@@ -104,7 +104,7 @@ resolver_test() ->
     InO = jsxd:from_list([{<<"uuid">>, <<"z">>}, {<<"resolvers">>, [<<"8.8.8.8">>]}]),
     In0 = apply_defaults(InP, InD, InO),
     In = jsxd:set(<<"resolvers">>, [<<"8.8.8.8">>], In0),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(to_vmadm(InP, InD, InO)))).
+    ?assertEqual(In, to_sniffle(to_vmadm(InP, InD, InO))).
 
 ssh_test() ->
     InP = jsxd:from_list([{<<"cpu_cap">>, 100}, {<<"uuid">>, <<"p">>}, {<<"quota">>, 10}, {<<"ram">>, 0}]),
@@ -113,7 +113,7 @@ ssh_test() ->
                           {<<"ssh_keys">>,
                            <<"ssh-rsa">>}]),
     In = apply_defaults(InP, InD, InO),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(to_vmadm(InP, InD, InO)))).
+    ?assertEqual(In, to_sniffle(to_vmadm(InP, InD, InO))).
 
 passwd_test() ->
     InP = jsxd:from_list([{<<"cpu_cap">>, 100}, {<<"uuid">>, <<"p">>}, {<<"quota">>, 10}, {<<"ram">>, 0}]),
@@ -122,7 +122,7 @@ passwd_test() ->
                           {<<"admin_pw">>, <<"admin">>},
                           {<<"root_pw">>, <<"root">>}]),
     In = apply_defaults(InP, InD, InO),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(to_vmadm(InP, InD, InO)))).
+    ?assertEqual(In, to_sniffle(to_vmadm(InP, InD, InO))).
 
 metadata_test() ->
     InP = jsxd:from_list([{<<"cpu_cap">>, 100}, {<<"uuid">>, <<"p">>}, {<<"quota">>, 10}, {<<"ram">>, 0}]),
@@ -131,7 +131,7 @@ metadata_test() ->
                           {<<"admin_pw">>, <<"admin">>},
                           {<<"metadata">>, [{<<"key">>, <<"value">>}]}]),
     In = apply_defaults(InP, InD, InO),
-    ?assertEqual(In, ordsets:from_list(to_sniffle(to_vmadm(InP, InD, InO)))).
+    ?assertEqual(In, to_sniffle(to_vmadm(InP, InD, InO))).
 
 nics_test() ->
     InP = jsxd:from_list([{<<"cpu_cap">>, 100}, {<<"uuid">>, <<"p">>}, {<<"quota">>, 10},{<<"ram">>, 0}]),
@@ -172,10 +172,10 @@ apply_defaults_kvm(InP, InD, InO, Cap, N) ->
     jsxd:thread([{set, <<"cpu_cap">>, Cap},
                  {delete, <<"image_size">>},
                  {set, <<"disks">>,
-                  [[{<<"boot">>, true},
-                    {<<"image_size">>, 10},
-                    {<<"image_uuid">>, <<"d">>}],
-                   [{<<"boot">>, false},
-                    {<<"size">>, 10240}]]},
+                  [#{<<"boot">> => true,
+                     <<"image_size">> => 10,
+                     <<"image_uuid">> => <<"d">>},
+                   #{<<"boot">> => false,
+                     <<"size">> => 10240}]},
                  {set, <<"vcpus">>, N}],
                 In0).
