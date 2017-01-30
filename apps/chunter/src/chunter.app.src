@@ -1,6 +1,6 @@
 {application, chunter,
- [{description, "SmartOS hypervisor manager."},
-  {vsn, "0.9.0"},
+ [{description, "Project-FiFo hypervisor agent."},
+  {vsn, "0.9.1"},
   {registered, []},
   {applications, [
                   kernel,
