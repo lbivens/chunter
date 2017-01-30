@@ -5,38 +5,39 @@
 ├─ eper─0.94.0
 ├─ erlsom─1.2.1
 ├─ erltrace─0.1.4
-├─ fifo_dt─0.2.4
+├─ fifo_dt─0.2.5
 │  ├─ libsnarlmatch─0.1.7
 │  └─ riak_dt─2.1.1
 ├─ fifo_lager─0.1.4
 │  ├─ lager_graylog─0.1.1
 │  └─ lager_logstash_backend─0.1.1
-├─ fifo_s3─0.2.6
+├─ fifo_s3─0.2.7
 │  ├─ base16─1.0.0
-│  ├─ erlcloud─0.13.2
+│  ├─ erlcloud─2.2.2
+│  │  ├─ eini─1.2.4
 │  │  ├─ jsx─2.8.0
-│  │  └─ lhttpc─1.4.0
-│  ├─ hackney─1.6.0
-│  │  ├─ certifi─0.4.0
+│  │  └─ lhttpc─1.5.1
+│  ├─ hackney─1.6.5
+│  │  ├─ certifi─0.7.0
 │  │  ├─ idna─1.2.0
 │  │  ├─ metrics─1.0.1
 │  │  ├─ mimerl─1.0.2
-│  │  └─ ssl_verify_fun─1.1.0
+│  │  └─ ssl_verify_fun─1.1.1
 │  └─ poolboy─1.5.1
-├─ fifo_spec─0.1.30
+├─ fifo_spec─0.1.31
 ├─ fifo_utils─0.1.30
 │  └─ uuid─1.5.4
 │     └─ quickrand─1.5.4
-├─ jsone─1.4.0
+├─ jsone─1.4.1
 ├─ jsxd─0.2.3
 ├─ libchunter─0.1.48
-├─ libhowl─0.1.37
-│  └─ mdns_client_lib─0.1.41
+├─ libhowl─0.1.38
+│  └─ mdns_client_lib─0.1.43
 │     ├─ mdns_client─0.1.8
 │     └─ pooler─1.5.0
-├─ libsnarl─0.3.48
+├─ libsnarl─0.3.49
 │  └─ oauth2─0.6.1
-├─ libsniffle─0.3.49
+├─ libsniffle─0.3.50
 ├─ ranch─1.1.0
 ├─ recon─2.3.2
 └─ smurf─0.1.3
