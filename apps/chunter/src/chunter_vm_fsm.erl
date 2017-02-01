@@ -1093,7 +1093,7 @@ ensure_zonedoor(State) ->
 
 
 do_snapshot(<<_:1/binary, P/binary>>, _VM, SnapID, _) ->
-    chunter_zfs:snapshot(P, SnapID).
+    chunter_zfs:snapshot(P, SnapID, [r]).
 
 finish_snapshot(_VM, _SnapID, [backup], ok) ->
     ok;
