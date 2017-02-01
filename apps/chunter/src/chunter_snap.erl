@@ -48,8 +48,12 @@ upload_(P, VM, SnapID, Options, N) ->
     case fifo_s3_upload:new(AKey, SKey, S3Host, S3Port, Bucket, Target) of
         {ok, Upload} ->
             lager:debug("[~s] Upload successfully initiated", [SnapID]),
-
-            Cmd = code:priv_dir(chunter) ++ "/zfs_export.gzip.sh",
+            Cmd = case proplists:get_bool(recursive, Options) of
+                      true ->
+                          code:priv_dir(chunter) ++ "/zfs_export_R.gzip.sh";
+                      _  ->
+                          code:priv_dir(chunter) ++ "/zfs_export.gzip.sh"
+                  end,
             Prt = case proplists:get_value(parent, Options) of
                       undefined ->
                           run(Cmd, [P, SnapID]);

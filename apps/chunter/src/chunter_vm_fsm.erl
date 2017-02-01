@@ -1151,7 +1151,7 @@ finish_rollback_snapshot(_VM, _SnapID, _, error) ->
     error.
 
 do_backup(Path, VM, SnapID, Options) ->
-    chunter_snap:upload(Path, VM, SnapID, Options).
+    chunter_snap:upload(Path, VM, SnapID, [recursive | Options]).
 
 finish_backup(VM, UUID, Opts, ok) ->
     case proplists:is_defined(xml, Opts) of
