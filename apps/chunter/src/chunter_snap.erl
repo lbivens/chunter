@@ -320,7 +320,6 @@ restore_path_test() ->
                              {<<"f">>, #{}},
                              {<<"g">>, [{<<"parent">>, <<"h">>}]}
                             ]),
-    io:format(user, "Remote: ~p~n", [Remote]),
     {ok, ResA} = restore_path(<<"a">>, Remote, Local),
     {ok, ResB} = restore_path(<<"b">>, Remote, Local),
     {ok, ResD} = restore_path(<<"d">>, Remote, Local),
