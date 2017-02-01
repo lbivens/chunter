@@ -268,9 +268,9 @@ restore_path(Target, Remote, Local, Path) ->
     end.
 
 restore_snap(Target, Remote, Local, Path, Snap) ->
-    Files = jsxd:get(<<"files">>, [], Snap),
+    Files = jsxd:get(<<"files">>, #{}, Snap),
     SHAs = [{ID, jsxd:get(<<"sha1">>, <<>>, V)}
-            || {ID, V} <- Files],
+            || {ID, V} <- maps:to_list(Files)],
     case jsxd:get(<<"parent">>, Snap) of
         {ok, Parent} ->
             restore_path(Parent, Remote, Local,
@@ -313,13 +313,13 @@ backup_update(VM, SnapID, K, V, Opts) ->
 -ifdef(TEST).
 restore_path_test() ->
     Local = [<<"b">>, <<"c">>],
-    Remote = [
-              {<<"a">>, [{<<"parent">>, <<"c">>}]},
-              {<<"d">>, [{<<"parent">>, <<"e">>}]},
-              {<<"e">>, [{<<"parent">>, <<"f">>}]},
-              {<<"f">>, []},
-              {<<"g">>, [{<<"parent">>, <<"h">>}]}
-             ],
+    Remote = jsxd:from_list([
+                             {<<"a">>, [{<<"parent">>, <<"c">>}]},
+                             {<<"d">>, [{<<"parent">>, <<"e">>}]},
+                             {<<"e">>, [{<<"parent">>, <<"f">>}]},
+                             {<<"f">>, #{}},
+                             {<<"g">>, [{<<"parent">>, <<"h">>}]}
+                            ]),
     {ok, ResA} = restore_path(<<"a">>, Remote, Local),
     {ok, ResB} = restore_path(<<"b">>, Remote, Local),
     {ok, ResD} = restore_path(<<"d">>, Remote, Local),
