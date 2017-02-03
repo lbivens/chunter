@@ -1093,7 +1093,7 @@ ensure_zonedoor(State) ->
 
 
 do_snapshot(<<_:1/binary, P/binary>>, _VM, SnapID, _) ->
-    chunter_zfs:snapshot(P, SnapID, [r]).
+    chunter_zfs:snapshot(P, SnapID).
 
 finish_snapshot(_VM, _SnapID, [backup], ok) ->
     ok;
@@ -1151,7 +1151,7 @@ finish_rollback_snapshot(_VM, _SnapID, _, error) ->
     error.
 
 do_backup(Path, VM, SnapID, Options) ->
-    chunter_snap:upload(Path, VM, SnapID, [recursive | Options]).
+    chunter_snap:upload(Path, VM, SnapID, Options).
 
 finish_backup(VM, UUID, Opts, ok) ->
     case proplists:is_defined(xml, Opts) of
