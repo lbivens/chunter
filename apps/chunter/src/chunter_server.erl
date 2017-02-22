@@ -122,9 +122,6 @@ service_action(Action, Service)
 %%--------------------------------------------------------------------
 init([]) ->
     System = chunter_utils:system(),
-    random:seed(erlang:phash2([node()]),
-                erlang:monotonic_time(),
-                erlang:unique_integer()),
     lager:info([{fifo_component, chunter}],
                "chunter:init.", []),
     %% We subscribe to sniffle register channel - that way we can reregister to
