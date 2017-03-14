@@ -52,14 +52,6 @@ handle_info({_OK, Socket, BinData}, State = #state{
                                                ok = _OK}) ->
     Msg = binary_to_term(BinData),
     case Msg of
-        {dtrace, Script} ->
-            lager:info("Compiling DTrace script: ~p.", [Script]),
-            {ok, Handle} = erltrace:open(),
-            ok = erltrace:compile(Handle, Script),
-            ok = erltrace:go(Handle),
-            lager:info("DTrace running."),
-            {noreply, State#state{state = Handle,
-                                  type = dtrace}};
         {console, UUID} ->
             lager:info("Console: ~p.", [UUID]),
             {ok, Type} = chunter_vm_fsm:type(UUID),
@@ -89,27 +81,6 @@ handle_info({_OK, Socket, BinData}, State = #state{
                     {stop, normal, State}
             end
     end;
-
-handle_info({_OK, Socket, BinData},  State = #state{
-                                                state = Handle,
-                                                type = dtrace,
-                                                transport = Transport,
-                                                ok = _OK}) ->
-    case binary_to_term(BinData) of
-        stop ->
-            erltrace:stop(Handle);
-        go ->
-            erltrace:go(Handle);
-        {Act, Ref, Fn} ->
-            lager:info("<~p> Starting ~p.", [Ref, Act]),
-            Transport:send(Socket, term_to_binary({ok, Ref})),
-            {Time, Res} = timed_erltrace(Act, Handle),
-            {Time1, Res1} = timed_aggregate(Res, Fn),
-            Transport:send(Socket, term_to_binary(Res1)),
-            lager:info("<~p> Dtrace ~p  took ~pus + ~pus + ~pus.",
-                       [Ref, Act, Time, Time1])
-    end,
-    {noreply, State};
 
 handle_info({_OK, _S, Data}, State = #state{
                                         type = console,
@@ -288,38 +259,6 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
-llquantize(Data) ->
-    lists:foldr(fun llquantize_/2, [], Data).
-
-llquantize_({_, Path, Vals}, Obj) ->
-    BPath = lists:map(fun ensure_bin/1, Path),
-    lists:foldr(fun({{Start, End}, Value}, Obj1) ->
-                        B = list_to_binary(io_lib:format("~p-~p",
-                                                         [Start, End])),
-                        jsxd:set(BPath ++ [B], Value, Obj1)
-                end, Obj, Vals).
-
-
-ensure_bin(L) when is_list(L) ->
-    list_to_binary(L);
-ensure_bin(B) when is_binary(B) ->
-    B;
-ensure_bin(N) when is_number(N) ->
-    list_to_binary(integer_to_list(N)).
-
--spec timed_erltrace(walk | consume, any()) ->
-                            {pos_integer(), {ok | error, term()}}.
-timed_erltrace(Act, Handle) ->
-    timer:tc(erltrace, Act, [Handle]).
-
--spec timed_aggregate({ok | error, term()}, llquantize | identity) ->
-                             {pos_integer(), {ok | error, term()}}.
-timed_aggregate({ok, D}, llquantize) ->
-    timer:tc(fun() -> {ok, llquantize(D)} end);
-timed_aggregate(R, _) ->
-    R.
-
 
 run_cmd(Transport, Socket, Port) ->
     receive
