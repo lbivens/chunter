@@ -22,7 +22,6 @@
                   public_key,
                   ssl,
                   fifo_s3,
-                  erltrace,
                   base16,
                   smurf,
                   ranch
