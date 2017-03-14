@@ -30,6 +30,13 @@ list_() ->
                 %% SmartOS seems to have one more coumn
                 [ID, Name, VMState, _Path, UUID, _Type, _IP | _] <-
                     zoneadm_list(), ID =/= <<"0">>];
+        freebsd ->
+            L = os:cmd("iocage list"),
+            [_ | L1] = re:split(L, "\n"),
+            L2 = [E || E <- L1, E =/= <<>>],
+            L3 = [re:split(E, "\s+") || E <- L2],
+            [#{uuid => Name, name => Name, state => State} ||
+                [_ID, _UUID, _Boot, State, Name, _Type, _IP, _Release] <- L3];
         S when S =:= omnios; S =:= solaris ->
             [#{uuid => UUID, name => UUID, state => VMState} ||
                 %% SmartOS seems to have one more coumn
