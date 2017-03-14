@@ -33,6 +33,8 @@ system() ->
             omnios;
         "11." ++ _ ->
             solaris;
+        "FreeBSD " ++ _ ->
+            freebsd;
         _ ->
             undefined
     end.
