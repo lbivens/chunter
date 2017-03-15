@@ -461,6 +461,24 @@ update_services(UUID, Changed) ->
                                  <<"data">> => Changed1})
     end.
 
+mem_total() ->
+    case chunter_utils:system() of
+        S when S =:= omnios; S =:= solaris; s =:= smartos ->
+            mem_solaris_total();
+        freebsd ->
+            mem_bsd_total()
+    end.
+
+mem_bsd_total() ->
+    "hw.physmem: " ++ R = os:cmd("sysctl hw.physmem"),
+    list_to_integer(lib:nonl(R)) div 1024.
+
+mem_solaris_total() ->
+    {TotalMem, _} =
+        string:to_integer(
+          os:cmd("/usr/sbin/prtconf | grep Memor | awk '{print $3}'")),
+    TotalMem.
+
 mem() ->
     VMS = chunter_zone:list(),
     ProvMemA = lists:foldl(
@@ -477,9 +495,7 @@ mem() ->
                          end + Mem
                  end, 0, VMS),
     ProvMem = round(ProvMemA / (1024*1024)),
-    {TotalMem, _} =
-        string:to_integer(
-          os:cmd("/usr/sbin/prtconf | grep Memor | awk '{print $3}'")),
+    TotalMem = mem_total(),
     {TotalMem, ProvMem}.
 
 register_vms() ->
