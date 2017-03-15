@@ -48,16 +48,19 @@ read_cfg([{<<"ip4_addr">>, IPData} | R], VM) ->
     %% ip4_addr:
     %% vtnet0|192.168.1.202/24
     RE = "^([a-z0-9]*)\\|([0-9.]*)/([0-9]*)$",
-    {match, [NIC, IP, CIDRS]} = re:run(IPData, RE, ?REOPTS),
-    CIDR = binary_to_integer(CIDRS),
-    Mask = ft_iprange:cidr_to_mask(CIDR),
-    Network = #{
-      <<"ip">> => IP,
-      <<"interface">> => NIC,
-      <<"netmask">> => Mask
-     },
-    read_cfg(R, VM#{<<"networks">> => [Network]});
-
+    case re:run(IPData, RE, ?REOPTS) of
+        {match, [NIC, IP, CIDRS]} ->
+            CIDR = binary_to_integer(CIDRS),
+            Mask = ft_iprange:cidr_to_mask(CIDR),
+            Network = #{
+              <<"ip">> => IP,
+              <<"interface">> => NIC,
+              <<"netmask">> => Mask
+             },
+            read_cfg(R, VM#{<<"networks">> => [Network]});
+        _ ->
+            read_cfg(R, VM)
+    end;
 read_cfg([_ | R], VM) ->
     read_cfg(R, VM);
 read_cfg([], VM) ->
