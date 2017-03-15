@@ -1,6 +1,6 @@
 -module(iocage).
 
--export([list/0, start/1, destroy/1, start/1, stop/1, restart/1]).
+-export([list/0, destroy/1, start/1, stop/1, restart/1]).
 
 -define(IOCAGE, "/usr/local/bin/iocage").
 

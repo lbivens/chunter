@@ -9,28 +9,28 @@ load(#{<<"name">> := UUID} = VM) ->
         {ok, <<"CONFIG_VERSION:4\n", Config/binary>>} ->
             Es = re:split(Config, "\n"),
             KVs = [begin
-                       {match, Ms} = re:run(E, "(.*?):(.*)", ?REOPTS),
-                       Ms
-                   end || E <- Es],
+                       {match, [K, V]} = re:run(E, "(.*?):(.*)", ?REOPTS),
+                       {K, V}
+                   end || E <- Es, E =/= <<>>],
             read_cfg(KVs, VM#{<<"brand">> => <<"jail">>});
         _ ->
             {error, not_found}
     end.
 
 
-read_cfg([[<<"allow_quotas">>, Quota] | R], VM) ->
+read_cfg([{<<"allow_quotas">>, Quota} | R], VM) ->
     read_cfg(R, VM#{<<"quota">> => Quota});
 
-read_cfg([[<<"tag">>, Alias] | R], VM) ->
+read_cfg([{<<"tag">>, Alias} | R], VM) ->
     read_cfg(R, VM#{<<"alias">> => Alias});
 
-read_cfg([[<<"boot">>, <<"on">>] | R], VM) ->
+read_cfg([{<<"boot">>, <<"on">>} | R], VM) ->
     read_cfg(R, VM#{<<"autoboot">> => true});
 
-read_cfg([[<<"boot">>, <<"off">>] | R], VM) ->
+read_cfg([{<<"boot">>, <<"off">>} | R], VM) ->
     read_cfg(R, VM#{<<"autoboot">> => false});
 
-read_cfg([[<<"memoryuse">>, M] | R], VM) ->
+read_cfg([{<<"memoryuse">>, M} | R], VM) ->
     {match, [Sb, T]} = re:run(M, "([0-9]+)(.):.*", ?REOPTS),
     S = binary_to_integer(Sb),
     Ram = case T of
@@ -44,7 +44,7 @@ read_cfg([[<<"memoryuse">>, M] | R], VM) ->
     read_cfg(R, VM#{<<"Ram">> => Ram});
 
 
-read_cfg([[<<"ip4_addr">>, IPData] | R], VM) ->
+read_cfg([{<<"ip4_addr">>, IPData} | R], VM) ->
     %% ip4_addr:
     %% vtnet0|192.168.1.202/24
     RE = "^([a-z0-9]*)\\|([0-9.]*)/([0-9]*)$",
