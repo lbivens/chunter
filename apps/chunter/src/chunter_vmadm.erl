@@ -67,15 +67,11 @@ zonecfg(UUID, SubCmd) ->
 %%     lager:debug("[zonecfg] ~s", [R]),
 %%     R.
 
--define(IOCAGE, "/usr/local/bin/iocage").
 
-iocage(Cmd) ->
-    case fifo_cmd:run(?IOCAGE, Cmd) of
-        {ok, R} ->
-            R;
-        {error, _, E} ->
-            E
-    end.
+uncage({ok, R}) ->
+    R;
+uncage({error, _, E}) ->
+    E.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -98,7 +94,7 @@ start(UUID) ->
             zoneadm(UUID, boot);
         iocage ->
             lager:info("iocage:start - UUID: ~s.", [UUID]),
-            iocage(["start", UUID])
+            uncage(iocage:start(UUID))
     end.
 
 -spec start(UUID::fifo:uuid(), Image::binary()) -> list().
@@ -117,7 +113,7 @@ start(UUID, Image) ->
             zoneadm(UUID, boot);
         iocage ->
             lager:info("iocage:start - UUID: ~s, Image: ~s.", [UUID, Image]),
-            iocage(["start", UUID])
+            uncage(iocage:start(UUID))
     end.
 
 -spec delete(UUID::fifo:uuid()) -> string().
@@ -143,9 +139,9 @@ delete(UUID) ->
                                    chunter_nic_srv:delete(IFace),
                                    $. %% This is so we have a nice list of dots
                            end, Nics);
-        iocage ->
-            lager:info("iocage:destroy - UUID: ~s, Image: ~s.", [UUID]),
-            iocage(["destroy", f, UUID])
+             iocage ->
+                 lager:info("iocage:destroy - UUID: ~s, Image: ~s.", [UUID]),
+                 uncage(iocage:destroy(UUID))
          end,
     chunter_server:update_mem(),
     R1.
@@ -194,7 +190,7 @@ stop(UUID) ->
             zoneadm(UUID, shutdown);
         iocage ->
             lager:info("iocage:stop - UUID: ~s.", [UUID]),
-            iocage(["stop", UUID])
+            uncage(iocage:stop(UUID))
     end.
 
 -spec force_stop(UUID::fifo:uuid()) -> list().
@@ -233,7 +229,7 @@ reboot(UUID) ->
             zoneadm(UUID, "shutdown -r");
         iocage ->
             lager:info("iocage:restart - UUID: ~s.", [UUID]),
-            iocage(["restart", UUID])
+            uncage(iocage:restart(UUID))
     end.
 
 -spec force_reboot(UUID::fifo:uuid()) -> list().
@@ -297,7 +293,7 @@ wait_for_result(Port, UUID) ->
     receive
         {Port, {data, {eol, Data}}} ->
             lager:debug("[vmadm] ~s", [Data]),
-            % take good care of the `exit_status` message
+            %% take good care of the `exit_status` message
             wait_for_result(Port, UUID);
         {Port, {data, Data}} ->
             lager:debug("[vmadm] ~s", [Data]),

@@ -16,8 +16,6 @@
 
 -ignore_xref([get_raw/1]).
 
-iocage_list() ->
-    fifo_cmd:run("iocage", ["list", 'H']).
 
 list() ->
     %% TODO: find a way to unify this!
@@ -38,7 +36,7 @@ list_() ->
                 [ID, UUID, VMState, _Path, _OtherUUID, _Type, _IP | _] <-
                     zoneadm_list(), ID =/= <<"0">>];
         freebsd ->
-            {ok, L} = iocage_list(),
+            {ok, L} = iocage:list(),
             L1 = re:split(L, "\n"),
             L2 = [E || E <- L1, E =/= <<>>],
             L3 = [re:split(E, "\t") || E <- L2],
@@ -98,7 +96,7 @@ get_raw(ZUUID) when is_binary(ZUUID) ->
             [{ID, UUID, VMState, Path, UUID, Type} ||
                 [ID, UUID, VMState, Path, _UUID, Type, _IP | _] <- Zones];
         freebsd ->
-            {ok, L} = iocage_list(),
+            {ok, L} = iocage:list(),
             L1 = re:split(L, "\n"),
             L2 = [E || E <- L1, E =/= <<>>],
             L3 = [re:split(E, "\t") || E <- L2],
