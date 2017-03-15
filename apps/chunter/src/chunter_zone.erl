@@ -40,7 +40,8 @@ list_() ->
             L1 = re:split(L, "\n"),
             L2 = [E || E <- L1, E =/= <<>>],
             L3 = [re:split(E, "\t") || E <- L2],
-            [#{uuid => Name, name => Name, state => State} ||
+            [#{uuid => Name, name => Name,
+               state => chunter_zonemon:simplifie_state(State)} ||
                 [_ID, _UUID, State, <<"fifo:", Name/binary>>,
                  _Release, _IP] <- L3]
     end.
@@ -100,7 +101,8 @@ get_raw(ZUUID) when is_binary(ZUUID) ->
             L1 = re:split(L, "\n"),
             L2 = [E || E <- L1, E =/= <<>>],
             L3 = [re:split(E, "\t") || E <- L2],
-            [{ID, Name, State, <<"/zones/", Name/binary>>, Name, <<"jail">>}
+            [{ID, Name, chunter_zonemon:simplifie_state(State),
+              <<"/zones/", Name/binary>>, Name, <<"jail">>}
              || [ID, _UUID, State, <<"fifo:", Name/binary>>,
                  _Release, _IP] <- L3]
     end.
