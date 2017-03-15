@@ -2,14 +2,16 @@
 
 -export([load/1]).
 -define(IOCAGE, "/usr/local/bin/iocage").
+-define(REOPTS, [{capture, all_but_first, binary}]).
 
-
-load(#{<<"name">> := Name} = VM) ->
-    Tag = <<"fifo:", Name/binary>>,
-    case fifo_cmd:run(?IOCAGE, ["get", "all", Tag]) of
+load(#{<<"name">> := UUID} = VM) ->
+    case fifo_cmd:run(?IOCAGE, ["get", "all", UUID]) of
         {ok, <<"CONFIG_VERSION:4\n", Config/binary>>} ->
             Es = re:split(Config, "\n"),
-            KVs = [re:split(E, ":") || E <- Es],
+            KVs = [begin
+                       {match, Ms} = re:run(E, "(.*?):(.*)", ?REOPTS),
+                       Ms
+                   end || E <- Es],
             read_cfg(KVs, VM#{<<"brand">> => <<"jail">>});
         _ ->
             {error, not_found}
@@ -18,16 +20,35 @@ load(#{<<"name">> := Name} = VM) ->
 
 read_cfg([[<<"allow_quotas">>, Quota] | R], VM) ->
     read_cfg(R, VM#{<<"quota">> => Quota});
+
+read_cfg([[<<"tag">>, Alias] | R], VM) ->
+    read_cfg(R, VM#{<<"alias">> => Alias});
+
 read_cfg([[<<"boot">>, <<"on">>] | R], VM) ->
-    read_cfg(R, VM#{<<"vm_autoboot">> => true});
+    read_cfg(R, VM#{<<"autoboot">> => true});
+
 read_cfg([[<<"boot">>, <<"off">>] | R], VM) ->
-    read_cfg(R, VM#{<<"vm_autoboot">> => false});
+    read_cfg(R, VM#{<<"autoboot">> => false});
+
+read_cfg([[<<"memoryuse">>, M] | R], VM) ->
+    {match, [Sb, T]} = re:run(M, "([0-9]+)(.):.*", ?REOPTS),
+    S = binary_to_integer(Sb),
+    Ram = case T of
+              <<"G">> ->
+                  S * 1024;
+              <<"M">> ->
+                  S;
+              <<"K">> ->
+                  S div 1024
+          end,
+    read_cfg(R, VM#{<<"Ram">> => Ram});
+
+
 read_cfg([[<<"ip4_addr">>, IPData] | R], VM) ->
     %% ip4_addr:
     %% vtnet0|192.168.1.202/24
     RE = "^([a-z0-9]*)\\|([0-9.]*)/([0-9]*)$",
-    Opts = [{capture, all_but_first, binary}],
-    {match, [NIC, IP, CIDRS]} = re:run(IPData, RE, Opts),
+    {match, [NIC, IP, CIDRS]} = re:run(IPData, RE, ?REOPTS),
     CIDR = binary_to_integer(CIDRS),
     Mask = ft_iprange:cidr_to_mask(CIDR),
     Network = #{

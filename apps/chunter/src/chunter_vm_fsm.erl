@@ -1465,15 +1465,28 @@ wait_for_delete(UUID) when is_binary(UUID) ->
     wait_for_delete(binary_to_list(UUID));
 
 wait_for_delete(UUID) ->
-    Cmd = "/usr/sbin/zoneadm",
-    Port = open_port({spawn_executable, Cmd},
-                     [{args, ["-z", UUID, "list"]}, use_stdio, binary,
-                      stderr_to_stdout, exit_status]),
+    Port = wait_cmd(UUID),
     receive
         {Port, {exit_status, 0}} ->
             wait_for_delete(UUID);
         {Port, {exit_status, 1}} ->
             ok
+    end.
+
+wait_cmd(UUID) ->
+    case chunter_utils:has_feature(zoneadm) of
+        true ->
+            Cmd = "/usr/sbin/zoneadm",
+            open_port({spawn_executable, Cmd},
+                      [{args, ["-z", UUID, "list"]}, use_stdio, binary,
+                       stderr_to_stdout, exit_status]);
+        false ->
+            true = chunter_utils:has_feature(iocage),
+            Cmd = "/usr/local/bin/iocage",
+            Args = ["get", "state", UUID],
+            open_port({spawn_executable, Cmd},
+                      [{args, Args}, use_stdio, binary,
+                       stderr_to_stdout, exit_status])
     end.
 
 -spec split_rules([{fifo:uuid(), fifo:smartos_fw_rule()}],
