@@ -4,7 +4,7 @@
 -define(IOCAGE, "/usr/local/bin/iocage").
 
 
-load(#{name := Name} = VM) ->
+load(#{<<"name">> := Name} = VM) ->
     Tag = <<"fifo:", Name/binary>>,
     case fifo_cmd:run(?IOCAGE, ["get", "all", Tag]) of
         {ok, <<"CONFIG_VERSION:4\n", Config/binary>>} ->
