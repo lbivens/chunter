@@ -10,7 +10,7 @@ load(#{<<"name">> := Name} = VM) ->
         {ok, <<"CONFIG_VERSION:4\n", Config/binary>>} ->
             Es = re:split(Config, "\n"),
             KVs = [re:split(E, ":") || E <- Es],
-            read_cfg(KVs, VM);
+            read_cfg(KVs, VM#{<<"brand">> => <<"jail">>});
         _ ->
             {error, not_found}
     end.

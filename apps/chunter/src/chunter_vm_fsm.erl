@@ -966,7 +966,8 @@ handle_info(update_services, running,
                      type = zone,
                      zone_type = Type
                     }) when Type =/= lx,
-                            Type =/= docker ->
+                            Type =/= docker,
+                            Type =/= jail ->
     case {chunter_smf:update(UUID, OldServices), OldServices} of
         {{ok, ServiceSet, Changed}, []} ->
             lager:debug("[~s] Initializing ~p Services.",

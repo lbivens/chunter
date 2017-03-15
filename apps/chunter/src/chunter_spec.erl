@@ -39,6 +39,8 @@ to_sniffle(Spec) ->
 to_zonecfg(Package, Dataset, OwnerData) ->
     generate_zonecfg(Package, Dataset, OwnerData).
 
+brand_to_type(<<"jail">>) ->
+    jail;
 brand_to_type(<<"ipkg">>) ->
     ipkg;
 brand_to_type(<<"lipkg">>) ->
@@ -101,7 +103,9 @@ translate_to_sniffle(<<"brand">>, Brand, Obj) ->
                     O1
             end;
         ipkg ->
-            jsxd:set(<<"type">>, <<"ipkg">>, Obj)
+            jsxd:set(<<"type">>, <<"ipkg">>, Obj);
+        jail ->
+            jsxd:set(<<"type">>, <<"jail">>, Obj)
     end;
 translate_to_sniffle(<<"max_physical_memory">>, V, Obj) ->
     jsxd:update(<<"ram">>, fun(E) -> E end, round(V/(1024*1024)), Obj);
