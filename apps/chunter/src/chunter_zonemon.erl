@@ -174,6 +174,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec simplifie_state(OriginalState::binary()) -> fifo:vm_state().
 
+simplifie_state(<<"up">>) ->
+    <<"running">>;
 simplifie_state(<<"installed">>) ->
     <<"stopped">>;
 simplifie_state(<<"uninitialized">>) ->
