@@ -60,15 +60,20 @@ start_link() ->
 init([]) ->
     {Name, _, _} = chunter_server:host_info(),
     lager:info("chunter:zonemon - initializing: ~s", [Name]),
-    Zonemon = code:priv_dir(chunter) ++ "/zonemon.sh",
     timer:send_interval(dflt_env(zonemon_interval, ?INTERVAL), zonecheck),
-    PortOpts = [exit_status, use_stdio, binary, {line, 1000}],
-    ZonePort = erlang:open_port({spawn, Zonemon}, PortOpts),
-    lager:info("chunter:zonemon - stats watchdog started.", []),
-    {ok, #state{
-            name=Name,
-            port=ZonePort
-           }}.
+    case chunter_utils:system() of
+        S when S =:= omnios; S =:= solaris; S =:= smartos ->
+            Zonemon = code:priv_dir(chunter) ++ "/zonemon.sh",
+            PortOpts = [exit_status, use_stdio, binary, {line, 1000}],
+            ZonePort = erlang:open_port({spawn, Zonemon}, PortOpts),
+            lager:info("chunter:zonemon - stats watchdog started.", []),
+            {ok, #state{
+                    name=Name,
+                    port=ZonePort
+                   }};
+        freebsd ->
+            {ok, #state{name = Name}}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
