@@ -151,6 +151,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+terminate(_Reason, #state{port = undefined}) ->
+    ok;
 terminate(_Reason, #state{port=Zport}) ->
     erlang:port_close(Zport),
     ok.
