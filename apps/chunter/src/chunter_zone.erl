@@ -30,6 +30,11 @@ list_() ->
                 %% SmartOS seems to have one more coumn
                 [ID, Name, VMState, _Path, UUID, _Type, _IP | _] <-
                     zoneadm_list(), ID =/= <<"0">>];
+        S when S =:= omnios; S =:= solaris ->
+            [#{uuid => UUID, name => UUID, state => VMState} ||
+                %% SmartOS seems to have one more coumn
+                [ID, UUID, VMState, _Path, _OtherUUID, _Type, _IP | _] <-
+                    zoneadm_list(), ID =/= <<"0">>];
         freebsd ->
             L = os:cmd("iocage list -H"),
             L1 = re:split(L, "\n"),
@@ -37,12 +42,7 @@ list_() ->
             L3 = [re:split(E, "\t") || E <- L2],
             [#{uuid => Name, name => Name, state => State} ||
                 [_ID, _UUID, State, <<"fifo:", Name/binary>>,
-                 _Release, _IP] <- L3];
-        S when S =:= omnios; S =:= solaris ->
-            [#{uuid => UUID, name => UUID, state => VMState} ||
-                %% SmartOS seems to have one more coumn
-                [ID, UUID, VMState, _Path, _OtherUUID, _Type, _IP | _] <-
-                    zoneadm_list(), ID =/= <<"0">>]
+                 _Release, _IP] <- L3]
     end.
 
 -spec get(ZUUID::fifo:uuid()) -> {ok, fifo:vm_config()} | {error, not_found}.
@@ -94,7 +94,15 @@ get_raw(ZUUID) when is_binary(ZUUID) ->
                       || Line <- re:split(os:cmd([?ZONEADM, " -z ", UUIDs,
                                                   " list -p"]), "\n")],
             [{ID, UUID, VMState, Path, UUID, Type} ||
-                [ID, UUID, VMState, Path, _UUID, Type, _IP | _] <- Zones]
+                [ID, UUID, VMState, Path, _UUID, Type, _IP | _] <- Zones];
+        freebsd ->
+            L = os:cmd("iocage list -H"),
+            L1 = re:split(L, "\n"),
+            L2 = [E || E <- L1, E =/= <<>>],
+            L3 = [re:split(E, "\t") || E <- L2],
+            [{ID, Name, State, <<"/zones/", Name/binary>>, Name, <<"jail">>}
+             || [ID, _UUID, State, <<"fifo:", Name/binary>>,
+                 _Release, _IP] <- L3]
     end.
 
 %% zonecfg -z 2398fe7c-032f-11e5-abb0-b33f9f953915 delete -F
