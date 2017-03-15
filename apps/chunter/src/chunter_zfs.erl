@@ -1,6 +1,7 @@
 -module(chunter_zfs).
 
 -export([
+         zpool/1,
          snapshot/2,
          snapshot/3,
          destroy_snapshot/2,
@@ -91,6 +92,16 @@ zfs(Args) ->
           end,
     lager:debug("ZFS: ~s ~p", [ZFS, Args]),
     fifo_cmd:run(ZFS, Args).
+
+zpool(Args) ->
+    ZPool = case chunter_utils:system() of
+                S when S =:= omnios; S =:= solaris; s =:= smartos ->
+                    "/usr/sbin/zpool";
+              freebsd ->
+                    "/sbin/zpool"
+            end,
+    lager:debug("ZFS: ~s ~p", [ZPool, Args]),
+    fifo_cmd:run(ZPool, Args).
 
 build_opts([], _) ->
     [];
