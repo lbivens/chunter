@@ -23,7 +23,6 @@
          rollback/3,
          list/1
         ]).
--define(ZFS, "/usr/sbin/zfs").
 
 destroy(Path) ->
     destroy(Path, []).
@@ -84,8 +83,14 @@ zfs(Cmd, Args, Target) ->
     zfs([Cmd | Args] ++ [Target]).
 
 zfs(Args) ->
-    lager:debug("ZFS: ~s ~p", [?ZFS, Args]),
-    fifo_cmd:run(?ZFS, Args).
+    ZFS = case chunter_utils:system() of
+              S when S =:= omnios; S =:= solaris; s =:= smartos ->
+                  "/usr/sbin/zfs";
+              freebsd ->
+                  "/sbin/zfs"
+          end,
+    lager:debug("ZFS: ~s ~p", [ZFS, Args]),
+    fifo_cmd:run(ZFS, Args).
 
 build_opts([], _) ->
     [];

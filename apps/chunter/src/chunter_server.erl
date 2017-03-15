@@ -127,9 +127,14 @@ init([]) ->
     %% We subscribe to sniffle register channel - that way we can reregister to
     %% dead sniffle processes.
     mdns_client_lib_connection_event:add_handler(chunter_connect_event),
-    ServiceIVal = application:get_env(chunter, update_services_interval, 10000),
     %% This is every 10 seconds
-    timer:send_interval(ServiceIVal, update_services),
+    ServiceIVal = application:get_env(chunter, update_services_interval, 10000),
+    case System of
+        freebsd ->
+            ok;
+        _ ->
+            timer:send_interval(ServiceIVal, update_services)
+    end,
     register_hypervisor(),
     lists:foldl(
       fun (#{<<"uuid">> := UUID}, _) ->
@@ -143,6 +148,8 @@ init([]) ->
                 [<<"ipkg">>];
             solaris ->
                 [<<"ipkg">>];
+            freebsd ->
+                [<<"jail">>];
             smartos ->
                 case os:cmd("ls /dev/kvm") of
                     "/dev/kvm\n" ->
@@ -195,6 +202,9 @@ handle_call({call, _Auth, Call}, _From, State) ->
     Reply = {error, {unsupported, Call}},
     {reply, Reply, State};
 
+handle_call({service, _, _}, _From, State = #state{system = freebsd}) ->
+    {reply, {error, not_supported}, State};
+
 handle_call({service, enable, Service}, _From, State) ->
     {reply, smurf:enable(Service, []), State};
 
@@ -235,9 +245,9 @@ handle_cast(update_mem, State = #state{
                [Host, ProvMem, TotalMem]),
     FreeMem = TotalMem - ReservedMem - ProvMem,
     ls_hypervisor:set_resource(Host, [{[<<"free-memory">>], FreeMem},
-                                       {[<<"reserved-memory">>], ReservedMem},
-                                       {[<<"provisioned-memory">>], ProvMem},
-                                       {[<<"total-memory">>], TotalMem}]),
+                                      {[<<"reserved-memory">>], ReservedMem},
+                                      {[<<"provisioned-memory">>], ProvMem},
+                                      {[<<"total-memory">>], TotalMem}]),
     {noreply, State#state{
                 total_memory = TotalMem,
                 provisioned_memory = ProvMem
@@ -253,8 +263,8 @@ handle_cast({reserve_mem, N}, State =
     ProvMem1 = ProvMem + N,
     Free = TotalMem - ReservedMem - ProvMem1,
     ls_hypervisor:set_resource(Host,
-                              [{[<<"free-memory">>], Free},
-                               {[<<"provisioned-memory">>], ProvMem1}]),
+                               [{[<<"free-memory">>], Free},
+                                {[<<"provisioned-memory">>], ProvMem1}]),
     {noreply, State#state{
                 provisioned_memory = ProvMem1
                }};
@@ -312,11 +322,13 @@ handle_cast(Msg, #state{name = Name} = State) ->
 %%--------------------------------------------------------------------
 handle_info(update_services, State=#state{tick = _T}) when _T >= ?MAX_TICK ->
     {noreply, State#state{services = [], tick = 0}};
-
+handle_info(update_services, State=#state{system = freebsd}) ->
+    {noreply, State#state{services = [], tick = 0}};
 handle_info(update_services, State=#state{
                                       name=Host,
-                                      services = OldServices
-                                     }) ->
+                                      services = OldServices,
+                                      system = System
+                                     }) when System =/= freebsd->
     %% We also update the memory while we are at it.
     update_mem(),
     case {chunter_smf:update(OldServices), OldServices} of
@@ -331,11 +343,11 @@ handle_info(update_services, State=#state{
         {{ok, ServiceSet, Changed}, _} ->
             %% Update changes which are not removes
             ls_hypervisor:set_service(
-               Host,
+              Host,
               [{[Srv], case SrvState of
                            <<"removed">> ->
                                delete;
-                            _ ->
+                           _ ->
                                SrvState
                        end}
                || {Srv, _, SrvState} <- Changed]),
