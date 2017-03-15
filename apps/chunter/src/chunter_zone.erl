@@ -42,7 +42,8 @@ list_() ->
             L3 = [re:split(E, "\t") || E <- L2],
             [#{uuid => UUID, name => UUID,
                state => chunter_zonemon:simplifie_state(State)} ||
-                [_ID, UUID, State, _Name, _Release, _IP] <- L3]
+                [ID, UUID, _Boot, State, _Tag, _Type, _IP, _Release, _TPL]
+                    <- L3]
     end.
 
 -spec get(ZUUID::fifo:uuid()) -> {ok, fifo:vm_config()} | {error, not_found}.
@@ -98,11 +99,11 @@ get_raw(ZUUID) when is_binary(ZUUID) ->
         freebsd ->
             {ok, L} = iocage:list(),
             L1 = re:split(L, "\n"),
-            L2 = [E || E <- L1, E =/= <<>>],
-            L3 = [re:split(E, "\t") || E <- L2],
-            [{ID, UUID, chunter_zonemon:simplifie_state(State),
-              <<"/iocage/", UUID/binary>>, UUID, <<"jail">>}
-             || [ID, UUID, State, _Tag, _Release, _IP] <- L3]
+            L2 = [re:split(E, "\t") || E <- L1, E =/= <<>>],
+            [{ID, ZUUID, chunter_zonemon:simplifie_state(State),
+              <<"/iocage/", ZUUID/binary>>, ZUUID, <<"jail">>}
+             || [ID, ZUUID, _Boot, State, _Tag, _Type, _IP, _Release, _TPL]
+                    <- L2]
     end.
 
 %% zonecfg -z 2398fe7c-032f-11e5-abb0-b33f9f953915 delete -F
