@@ -37,7 +37,7 @@ read_cfg([[<<"ip4_addr">>, IPData] | R], VM) ->
      },
     read_cfg(R, VM#{<<"networks">> => [Network]});
 
-read_cfg([[_, _] | R], VM) ->
+read_cfg([_ | R], VM) ->
     read_cfg(R, VM);
 read_cfg([], VM) ->
     VM.
