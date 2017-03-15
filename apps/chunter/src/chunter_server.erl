@@ -129,12 +129,7 @@ init([]) ->
     mdns_client_lib_connection_event:add_handler(chunter_connect_event),
     %% This is every 10 seconds
     ServiceIVal = application:get_env(chunter, update_services_interval, 10000),
-    case System of
-        freebsd ->
-            ok;
-        _ ->
-            timer:send_interval(ServiceIVal, update_services)
-    end,
+    timer:send_interval(ServiceIVal, update_services),
     register_hypervisor(),
     lists:foldl(
       fun (#{<<"uuid">> := UUID}, _) ->
@@ -323,6 +318,7 @@ handle_cast(Msg, #state{name = Name} = State) ->
 handle_info(update_services, State=#state{tick = _T}) when _T >= ?MAX_TICK ->
     {noreply, State#state{services = [], tick = 0}};
 handle_info(update_services, State=#state{system = freebsd}) ->
+    update_mem(),
     {noreply, State#state{services = [], tick = 0}};
 handle_info(update_services, State=#state{
                                       name=Host,
@@ -471,7 +467,7 @@ mem_total() ->
 
 mem_bsd_total() ->
     "hw.physmem: " ++ R = os:cmd("sysctl hw.physmem"),
-    list_to_integer(lib:nonl(R)) div 1024.
+    list_to_integer(lib:nonl(R)) div 1024 div 1024.
 
 mem_solaris_total() ->
     {TotalMem, _} =

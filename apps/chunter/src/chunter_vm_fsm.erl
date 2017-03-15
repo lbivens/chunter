@@ -645,6 +645,8 @@ handle_event(register, StateName, State = #state{uuid = UUID}) ->
             {Type, ZoneType} =
                 case {jsxd:get(<<"type">>, SniffleData),
                       jsxd:get(<<"zone_type">>, SniffleData)} of
+                    {{ok, <<"jail">>}, _} ->
+                        {jail, jail};
                     {{ok, <<"kvm">>}, _} ->
                         {kvm, kvm};
                     {{ok, <<"zone">>}, {ok, <<"docker">>}} ->
