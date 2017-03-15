@@ -95,22 +95,25 @@
 
 -spec load(VM::fifo:vm_config()) -> fifo:vm_config() | {error, not_found}.
 
-load(#{<<"name">> := Name} = VM) ->
+load(VM) ->
     case chunter_utils:system() of
         freebsd ->
             chunter_jail:load(VM);
         S when S =:= omnios; S =:= solaris; S =:= smartos ->
-            Res = convert(<<"/etc/zones/", Name/binary, ".xml">>,
-                          maps:to_list(VM)),
-            RouteFile = <<"/zones/", Name/binary, "/config/routes.json">>,
-            case filelib:is_file(RouteFile) of
-                false ->
-                    Res;
-                true ->
-                    {ok, Routes} = file:read_file(RouteFile),
-                    RoutesJSON = jsone:decode(Routes),
-                    jsxd:set(<<"routes">>, RoutesJSON, Res)
-            end
+            load_zone(VM)
+    end.
+
+load_zone(#{<<"name">> := Name} = VM) ->
+    Res = convert(<<"/etc/zones/", Name/binary, ".xml">>,
+                  maps:to_list(VM)),
+    RouteFile = <<"/zones/", Name/binary, "/config/routes.json">>,
+    case filelib:is_file(RouteFile) of
+        false ->
+            Res;
+        true ->
+            {ok, Routes} = file:read_file(RouteFile),
+            RoutesJSON = jsone:decode(Routes),
+            jsxd:set(<<"routes">>, RoutesJSON, Res)
     end.
 
 -spec convert(Name::binary(), VM::[{binary(), term()}]) ->

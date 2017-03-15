@@ -66,13 +66,13 @@ remove(Ref) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    case chunter_utils:system() of
-        S when S =:= omnios; S =:= solaris; S =:= smartos ->
+    case chunter_utils:has_feature(zdoor) of
+        true ->
             DoorPort = zdoor_port(),
             erlang:send_after(?HEATRBEAT_INTERVAL, self(), heartbeat),
             process_flag(trap_exit, true),
             {ok, #state{port = DoorPort}};
-        freebsd ->
+        false ->
             {ok, #state{}}
     end.
 

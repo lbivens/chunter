@@ -151,9 +151,7 @@ init([]) ->
                         [<<"zone">>, <<"kvm">>];
                     _ ->
                         [<<"zone">>]
-                end;
-            _ ->
-                []
+                end
         end,
     {Host, _IPStr, _Port} = host_info(),
     ls_hypervisor:sysinfo(Host, SysInfo),

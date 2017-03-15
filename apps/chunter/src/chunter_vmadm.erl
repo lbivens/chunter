@@ -67,6 +67,15 @@ zonecfg(UUID, SubCmd) ->
 %%     lager:debug("[zonecfg] ~s", [R]),
 %%     R.
 
+-define(IOCAGE, "/usr/local/bin/iocage").
+
+iocage(Cmd) ->
+    case fifo_cmd:run(?IOCAGE, Cmd) of
+        {ok, R} ->
+            R;
+        {error, _, E} ->
+            E
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -76,47 +85,53 @@ zonecfg(UUID, SubCmd) ->
 
 -spec start(UUID::fifo:uuid()) -> list().
 start(UUID) ->
-    case chunter_utils:system() of
-        smartos ->
+    case chunter_utils:vm_cli() of
+        vmadm ->
             lager:info("vmadm:start - UUID: ~s.", [UUID]),
             Cmd = <<"/usr/sbin/vmadm start ", UUID/binary>>,
             lager:debug("vmadm:cmd - ~s.", [Cmd]),
             R = os:cmd(binary_to_list(Cmd)),
             lager:debug("[vmadm] ~s", [R]),
             R;
-        S when S =:= omnios; S =:= solaris ->
+        zoneadm ->
             lager:info("zoneadm:start - UUID: ~s.", [UUID]),
-            zoneadm(UUID, boot)
+            zoneadm(UUID, boot);
+        iocage ->
+            lager:info("iocage:start - UUID: ~s.", [UUID]),
+            iocage(["start", UUID])
     end.
 
 -spec start(UUID::fifo:uuid(), Image::binary()) -> list().
 
 start(UUID, Image) ->
-    case chunter_utils:system() of
-        smartos ->
+    case chunter_utils:vm_cli() of
+        vmadm ->
             lager:info("vmadm:start - UUID: ~s, Image: ~s.", [UUID, Image]),
             Cmd = <<"/usr/sbin/vmadm start ", UUID/binary>>,
             lager:debug("vmadm:cmd - ~s.", [Cmd]),
             R = os:cmd(binary_to_list(Cmd)),
             lager:debug("[vmadm] ~s", [R]),
             R;
-        S when S =:= omnios; S =:= solaris ->
+        zoneadm ->
             lager:info("zoneadm:start - UUID: ~s, Image: ~s.", [UUID, Image]),
-            zoneadm(UUID, boot)
+            zoneadm(UUID, boot);
+        iocage ->
+            lager:info("iocage:start - UUID: ~s, Image: ~s.", [UUID, Image]),
+            iocage(["start", UUID])
     end.
 
 -spec delete(UUID::fifo:uuid()) -> string().
 
 delete(UUID) ->
-    R1 = case chunter_utils:system() of
-             smartos ->
+    R1 = case chunter_utils:vm_cli() of
+             vmadm ->
                  lager:info("vmadm:delete - UUID: ~s.", [UUID]),
                  Cmd = <<"/usr/sbin/vmadm delete ", UUID/binary>>,
                  lager:debug("vmadm:cmd - ~s.", [Cmd]),
                  R = os:cmd(binary_to_list(Cmd)),
                  lager:debug("[vmadm] ~s", [R]),
                  R;
-             S when S =:= omnios; S =:= solaris ->
+             zoneadm ->
                  {ok, VM} =  chunter_zone:get(UUID),
                  force_stop(UUID),
                  lager:info("zoneadm:uninstall - UUID: ~s / ~p.", [UUID, VM]),
@@ -127,7 +142,10 @@ delete(UUID) ->
                                    {ok, IFace} = jsxd:get(<<"interface">>, N),
                                    chunter_nic_srv:delete(IFace),
                                    $. %% This is so we have a nice list of dots
-                           end, Nics)
+                           end, Nics);
+        iocage ->
+            lager:info("iocage:destroy - UUID: ~s, Image: ~s.", [UUID]),
+            iocage(["destroy", f, UUID])
          end,
     chunter_server:update_mem(),
     R1.
@@ -135,16 +153,19 @@ delete(UUID) ->
 -spec info(UUID::fifo:uuid()) -> fifo:config_list().
 
 info(UUID) ->
-    case chunter_utils:system() of
-        smartos ->
+    case chunter_utils:vm_cli() of
+        vmadm ->
             lager:info("vmadm:info - UUID: ~s.", [UUID]),
             Cmd = <<"/usr/sbin/vmadm info ", UUID/binary>>,
             lager:debug("vmadm:cmd - ~s.", [Cmd]),
             Output = os:cmd(binary_to_list(Cmd)),
             decode_info(Output);
-        S when S =:= omnios; S =:= solaris ->
+        zoneadm ->
+            {error, no_info};
+        iocage ->
             {error, no_info}
     end.
+
 decode_info("Unable" ++ _) ->
     {error, no_info};
 
@@ -160,65 +181,78 @@ decode_info(JSON) ->
 -spec stop(UUID::fifo:uuid()) -> list().
 
 stop(UUID) ->
-    case chunter_utils:system() of
-        smartos ->
+    case chunter_utils:vm_cli() of
+        vmadm ->
             lager:info("vmadm:stop - UUID: ~s.", [UUID]),
             Cmd = <<"/usr/sbin/vmadm stop ", UUID/binary>>,
             lager:debug("vmadm:cmd - ~s.", [Cmd]),
             R = os:cmd(binary_to_list(Cmd)),
             lager:debug("[vmadm] ~s", [R]),
             R;
-        S when S =:= omnios; S =:= solaris ->
+        zoneadm ->
             lager:info("zoneadm:stop - UUID: ~s.", [UUID]),
-            zoneadm(UUID, shutdown)
+            zoneadm(UUID, shutdown);
+        iocage ->
+            lager:info("iocage:stop - UUID: ~s.", [UUID]),
+            iocage(["stop", UUID])
     end.
 
 -spec force_stop(UUID::fifo:uuid()) -> list().
 
 force_stop(UUID) ->
-    case chunter_utils:system() of
-        smartos ->
+    case chunter_utils:vm_cli() of
+        vmadm ->
             lager:info("vmadm:force-stop - UUID: ~s.", [UUID]),
             Cmd = <<"/usr/sbin/vmadm stop ", UUID/binary, " -F">>,
             lager:debug("vmadm:cmd - ~s.", [Cmd]),
             R = os:cmd(binary_to_list(Cmd)),
             lager:debug("[vmadm] ~s", [R]),
             R;
-        S when S =:= omnios; S =:= solaris ->
+        zoneadm ->
             lager:info("vmadm:force-stop - UUID: ~s.", [UUID]),
-            zoneadm(UUID, halt)
+            zoneadm(UUID, halt);
+        iocage ->
+            %% This is the same as normal stop for iocage
+            stop(UUID)
+
     end.
 
 -spec reboot(UUID::fifo:uuid()) -> list().
 
 reboot(UUID) ->
-    case chunter_utils:system() of
-        smartos ->
+    case chunter_utils:vm_cli() of
+        vmadm ->
             lager:info("vmadm:reboot - UUID: ~s.", [UUID]),
             Cmd = <<"/usr/sbin/vmadm reboot ", UUID/binary>>,
             lager:debug("vmadm:cmd - ~s.", [Cmd]),
             R = os:cmd(binary_to_list(Cmd)),
             lager:debug("[vmadm] ~s", [R]),
             R;
-        S when S =:= omnios; S =:= solaris ->
+        zoneadm ->
             lager:info("vmadm:reboot - UUID: ~s.", [UUID]),
-            zoneadm(UUID, "shutdown -r")
+            zoneadm(UUID, "shutdown -r");
+        iocage ->
+            lager:info("iocage:restart - UUID: ~s.", [UUID]),
+            iocage(["restart", UUID])
     end.
 
 -spec force_reboot(UUID::fifo:uuid()) -> list().
 
 force_reboot(UUID) ->
-    case chunter_utils:system() of
-        smartos ->
+    case chunter_utils:vm_cli() of
+        vmadm ->
             lager:info("vmadm:reboot - UUID: ~s.", [UUID]),
             Cmd = <<"/usr/sbin/vmadm reboot ", UUID/binary, " -F">>,
             lager:debug("vmadm:cmd - ~s.", [Cmd]),
             R = os:cmd(binary_to_list(Cmd)),
             lager:debug("[vmadm] ~s", [R]),
             R;
-        S when S =:= omnios; S =:= solaris ->
+        zoneadm ->
             lager:info("vmadm:reboot - UUID: ~s.", [UUID]),
-            zoneadm(UUID, reboot)
+            zoneadm(UUID, reboot);
+        iocage ->
+            %% this is the same as normal reboot for iocage
+            reboot(UUID)
     end.
 
 -spec create(UUID::binary(), Data::fifo:vm_config()) -> ok |
