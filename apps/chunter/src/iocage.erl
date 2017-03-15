@@ -5,7 +5,7 @@
 -define(IOCAGE, "/usr/local/bin/iocage").
 
 list() ->
-    run(["list", 'H']).
+    run(["list", 'H', l]).
 
 start(UUID) ->
     run(["start", UUID]).
