@@ -270,10 +270,6 @@ handle_cast(connect, #state{name = Host,
     ls_hypervisor:version(Host, ?VERSION),
     update_mem(),
     case System of
-        S when S =:= omnios; S =:= solaris ->
-            {ok, Networks} = application:get_env(chunter, network_tags),
-            Networks1 = [list_to_binary(N) || {N, _} <- Networks],
-            ls_hypervisor:networks(Host, Networks1);
         smartos ->
             Networks = re:split(
                          os:cmd("cat /usbkey/config  | grep -v '^#' | "
@@ -286,7 +282,11 @@ handle_cast(connect, #state{name = Host,
                           ",\\s*|\n"),
             Etherstub1 = lists:delete(<<>>, Etherstub),
             ls_hypervisor:networks(Host, Networks1),
-            ls_hypervisor:etherstubs(Host, Etherstub1)
+            ls_hypervisor:etherstubs(Host, Etherstub1);
+        _ ->
+            {ok, Networks} = application:get_env(chunter, network_tags),
+            Networks1 = [list_to_binary(N) || {N, _} <- Networks],
+            ls_hypervisor:networks(Host, Networks1)
     end,
     ls_hypervisor:virtualisation(Host, Caps),
     register_vms(),
