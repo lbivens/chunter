@@ -190,7 +190,7 @@ simplifie_state(<<"shutting_down">>) ->
 simplifie_state(<<"empty">>) ->
     <<"shutting_down">>;
 simplifie_state(<<"down">>) ->
-    <<"shutting_down">>;
+    <<"stopped">>;
 simplifie_state(<<"dying">>) ->
     <<"shutting_down">>;
 simplifie_state(<<"dead">>) ->

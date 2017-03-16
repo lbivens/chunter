@@ -42,7 +42,7 @@ list_() ->
             L3 = [re:split(E, "\t") || E <- L2],
             [#{uuid => UUID, name => UUID,
                state => chunter_zonemon:simplifie_state(State)} ||
-                [ID, UUID, _Boot, State, _Tag, _Type, _IP, _Release, _TPL]
+                [_ID, UUID, _Boot, State, _Tag, _Type, _IP, _Release, _TPL]
                     <- L3]
     end.
 
@@ -102,8 +102,8 @@ get_raw(ZUUID) when is_binary(ZUUID) ->
             L2 = [re:split(E, "\t") || E <- L1, E =/= <<>>],
             [{ID, ZUUID, chunter_zonemon:simplifie_state(State),
               <<"/iocage/", ZUUID/binary>>, ZUUID, <<"jail">>}
-             || [ID, ZUUID, _Boot, State, _Tag, _Type, _IP, _Release, _TPL]
-                    <- L2]
+             || [ID, UUID, _Boot, State, _Tag, _Type, _IP, _Release, _TPL]
+                    <- L2, UUID =:= ZUUID]
     end.
 
 %% zonecfg -z 2398fe7c-032f-11e5-abb0-b33f9f953915 delete -F
