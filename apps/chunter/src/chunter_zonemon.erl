@@ -173,6 +173,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 simplifie_state(<<"up">>) ->
     <<"running">>;
+simplifie_state(<<"stopped">>) ->
+    <<"stopped">>;
 simplifie_state(<<"installed">>) ->
     <<"stopped">>;
 simplifie_state(<<"uninitialized">>) ->
