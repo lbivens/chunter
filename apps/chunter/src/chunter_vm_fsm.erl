@@ -656,8 +656,10 @@ handle_event(register, StateName, State = #state{uuid = UUID}) ->
             end;
 
         _ ->
-            timer:apply_after(1000 + rand:uniform(1000), ?MODULE,
-                              register, [UUID])
+            Delay = 1000 + rand:uniform(1000),
+            lager:warning("[vm] Failed to register ~s, re-registering after ~p",
+                          [UUID, Delay]),
+            timer:apply_after(Delay, ?MODULE, register, [UUID])
     end;
 
 handle_event({update, undefined, Config}, StateName,
