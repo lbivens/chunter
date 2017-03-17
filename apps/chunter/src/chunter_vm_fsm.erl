@@ -411,7 +411,7 @@ initialized({restore, SnapID, Options},
         E ->
             R = chunter_lock:release(UUID),
             lager:debug("[creating:~s] Log released after failure: ~p.",
-                [UUID, R]),
+                        [UUID, R]),
             {next_state, E, initialized, State}
     end;
 
@@ -515,7 +515,7 @@ restoring_backup(next, State =
     {next_state, NextState, State#state{orig_state=undefined, args={}}}.
 
 creating_backup(next, State = #state{orig_state = NextState, uuid=VM,
-                                        args={SnapID, Options}}) ->
+                                     args={SnapID, Options}}) ->
     lager:debug("Creating Backup with options: ~p", [Options]),
     case proplists:is_defined(create, Options) of
         true ->
@@ -555,19 +555,19 @@ create_backup_fn(VM, SnapID, Options) ->
     end.
 
 creating_snapshot(next, State = #state{orig_state = NextState,
-                                          args={SnapID}}) ->
+                                       args={SnapID}}) ->
     snapshot_action(State#state.uuid, SnapID, fun do_snapshot/4,
                     fun finish_snapshot/4, []),
     {next_state, NextState, State#state{orig_state=undefined, args={}}}.
 
 deleting_snapshot(next, State = #state{orig_state = NextState,
-                                          args={SnapID}}) ->
+                                       args={SnapID}}) ->
     snapshot_action(State#state.uuid, SnapID, fun do_delete_snapshot/4,
                     fun finish_delete_snapshot/4, []),
     {next_state, NextState, State#state{orig_state=undefined, args={}}}.
 
 rolling_back_snapshot(next, State = #state{orig_state = NextState,
-                                              args={SnapID}}) ->
+                                           args={SnapID}}) ->
     snapshot_action(State#state.uuid, SnapID, fun do_rollback_snapshot/4,
                     fun finish_rollback_snapshot/4, []),
     {next_state, NextState, State#state{orig_state=undefined, args={}}}.
@@ -632,38 +632,32 @@ handle_event({force_state, NextState}, StateName,
     end;
 
 handle_event(register, StateName, State = #state{uuid = UUID}) ->
-    ls_vm:register(UUID, State#state.hypervisor),
-    %%    change_state(State#state.uuid, atom_to_binary(StateName)),
-    case chunter_zone:get(UUID) of
-        {error, not_found} ->
-            lager:debug("[~s] Stopping in load, notfound.", [State#state.uuid]),
-            {stop, {shutdown, not_found}, State};
-        {ok, VMData} ->
-            snapshot_sizes(UUID),
-            timer:send_after(500, get_info),
-            SniffleData = chunter_spec:to_sniffle(VMData),
-            {Type, ZoneType} =
-                case {jsxd:get(<<"type">>, SniffleData),
-                      jsxd:get(<<"zone_type">>, SniffleData)} of
-                    {{ok, <<"jail">>}, _} ->
-                        {jail, jail};
-                    {{ok, <<"kvm">>}, _} ->
-                        {kvm, kvm};
-                    {{ok, <<"zone">>}, {ok, <<"docker">>}} ->
-                        {zone, docker};
-                    {{ok, <<"zone">>}, {ok, <<"lx">>}} ->
-                        {zone, lx};
-                    _ ->
-                        {zone, zone}
-                end,
-            lager:info("[~s] Has type: ~p.", [UUID, Type]),
-            howl_update(UUID, [{<<"config">>, SniffleData}]),
-            ls_vm:set_config(UUID, SniffleData),
-            chunter_zlogin:start(UUID, ZoneType),
-            State1 = State#state{type = Type, zone_type = ZoneType},
-            change_state(State1#state.uuid, atom_to_binary(StateName), false),
-            update_fw(UUID),
-            {next_state, StateName, State1#state{services = []}}
+    case ls_vm:register(UUID, State#state.hypervisor) of
+        ok ->
+            case chunter_zone:get(UUID) of
+                {error, not_found} ->
+                    lager:debug("[~s] Stopping in load, notfound.",
+                                [State#state.uuid]),
+                    {stop, {shutdown, not_found}, State};
+                {ok, VMData} ->
+                    snapshot_sizes(UUID),
+                    timer:send_after(500, get_info),
+                    SniffleData = chunter_spec:to_sniffle(VMData),
+                    {Type, ZoneType} = exctract_types(SniffleData),
+                    lager:info("[~s] Has type: ~p.", [UUID, Type]),
+                    howl_update(UUID, [{<<"config">>, SniffleData}]),
+                    ls_vm:set_config(UUID, SniffleData),
+                    chunter_zlogin:start(UUID, ZoneType),
+                    State1 = State#state{type = Type, zone_type = ZoneType},
+                    change_state(State1#state.uuid, atom_to_binary(StateName),
+                                 false),
+                    update_fw(UUID),
+                    {next_state, StateName, State1#state{services = []}}
+            end;
+
+        _ ->
+            timer:apply_after(1000 + rand:uniform(1000), ?MODULE,
+                              register, [UUID])
     end;
 
 handle_event({update, undefined, Config}, StateName,
@@ -1190,11 +1184,11 @@ snapshot_action_on_disks(VM, UUID, Fun, LastReply, Disks, Opts) ->
     end.
 
 -type disk_fold_acc() :: {error, binary()} |
-                      {{VM :: binary(),
-                        UUID :: binary(),
-                        Fun :: snapshot_fun(),
-                        Opts :: [term()]},
-                       {ok, binary()}}.
+                         {{VM :: binary(),
+                           UUID :: binary(),
+                           Fun :: snapshot_fun(),
+                           Opts :: [term()]},
+                          {ok, binary()}}.
 
 -spec snapshot_fold(Disk :: [{binary(), term()}],
                     Return :: disk_fold_acc()) ->
@@ -1329,8 +1323,8 @@ snapshot_sizes(VM) ->
 do_restore(Path, VM, {local, SnapId}, Opts) ->
     do_rollback_snapshot(Path, VM, SnapId, Opts);
 do_restore(Path = <<_:43/binary, Dx/binary>>, VM, {Type, SnapId, SHAs}, Opts)
-when Type =:= full;
-     Type =:= incr ->
+  when Type =:= full;
+       Type =:= incr ->
     File = <<VM/binary, "/", SnapId/binary, Dx/binary>>,
     SHA1 = jsxd:get([File], <<>>, SHAs),
     case Type of
@@ -1667,3 +1661,17 @@ update_timeout(UUID) ->
     T = erlang:system_time(milli_seconds) + 60000,
     chunter_vmadm:update(UUID, [{<<"set_internal_metadata">>,
                                  [{<<"docker:wait_for_attach">>, T}]}]).
+exctract_types(SniffleData) ->
+    case {jsxd:get(<<"type">>, SniffleData),
+          jsxd:get(<<"zone_type">>, SniffleData)} of
+        {{ok, <<"jail">>}, _} ->
+            {jail, jail};
+        {{ok, <<"kvm">>}, _} ->
+            {kvm, kvm};
+        {{ok, <<"zone">>}, {ok, <<"docker">>}} ->
+            {zone, docker};
+        {{ok, <<"zone">>}, {ok, <<"lx">>}} ->
+            {zone, lx};
+        _ ->
+            {zone, zone}
+    end.
