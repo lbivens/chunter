@@ -6,7 +6,7 @@
 
 load(#{<<"name">> := UUID} = VM) ->
     case fifo_cmd:run(?IOCAGE, ["get", "all", UUID]) of
-        {ok, <<"CONFIG_VERSION:4\n", Config/binary>>} ->
+        {ok, Config} ->
             Es = re:split(Config, "\n"),
             KVs = [begin
                        {match, [K, V]} = re:run(E, "(.*?):(.*)", ?REOPTS),
