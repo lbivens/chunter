@@ -140,7 +140,7 @@ delete(UUID) ->
                                    $. %% This is so we have a nice list of dots
                            end, Nics);
              iocage ->
-                 lager:info("iocage:destroy - UUID: ~s, Image: ~s.", [UUID]),
+                 lager:info("iocage:destroy - UUID: ~s.", [UUID]),
                  uncage(iocage:destroy(UUID))
          end,
     chunter_server:update_mem(),
