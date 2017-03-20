@@ -17,6 +17,7 @@ restart(UUID) ->
     run(["restart", UUID]).
 
 destroy(UUID) ->
+    stop(UUID),
     run(["destroy", f, UUID]).
 
 run(Cmd) ->
