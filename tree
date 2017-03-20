@@ -4,6 +4,7 @@
 ├─ chunter─0.9.1
 ├─ eper─0.94.0
 ├─ erlsom─1.2.1
+├─ erltrace─0.1.4
 ├─ fifo_dt─0.2.8
 │  ├─ libsnarlmatch─0.1.8
 │  └─ riak_dt─2.1.1
