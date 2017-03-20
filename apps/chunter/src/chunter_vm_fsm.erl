@@ -996,6 +996,9 @@ handle_info(update_services, running,
 handle_info(update_services, StateName, State) ->
     {next_state, StateName, State};
 
+handle_info(get_info, State, State = #state{type=jail}) ->
+    {next_state, State, State};
+
 handle_info(get_info, stopped, State) ->
     timer:send_after(1000, get_info),
     {next_state, stopped, State};
