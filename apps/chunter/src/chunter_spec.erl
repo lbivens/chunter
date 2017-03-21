@@ -253,8 +253,13 @@ generate_iocage(Package, Dataset, OwnerData) ->
 
     Domain = jsxd:get(<<"dns_domain">>, <<"local">>, OwnerData),
 
-    {ok, ResolversL} = jsxd:get(<<"resolvers">>, OwnerData),
-    [Resolver | _] = re:split(ResolversL, ","),
+    Resolver = case jsxd:get(<<"resolvers">>, OwnerData) of
+                   {ok, ResolversL} ->
+                       re:split(ResolversL, ",");
+                   _ ->
+                       %% TODO: read the correct one
+                       <<"8.8.8.8">>
+               end,
 
     D2 = [{ip4_addr, io_lib:format("~s|~s/~p", [NicBin, IP, CIDR])},
           {defaultrouter, GW},
