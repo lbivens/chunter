@@ -246,7 +246,7 @@ generate_iocage(Package, Dataset, OwnerData) ->
     {ok, Network} = jsxd:get(<<"nic_tag">>, NicSpec),
 
     {ok, Networks} = application:get_env(chunter, network_tags),
-    {Network, IFace} = lists:keyfind(binary_to_list(Network), 1, Networks),
+    {_Network, IFace} = lists:keyfind(binary_to_list(Network), 1, Networks),
 
 
     {ok, IPBin} = jsxd:get(<<"ip">>, NicSpec),
