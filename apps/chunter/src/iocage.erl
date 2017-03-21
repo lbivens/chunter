@@ -24,5 +24,6 @@ create(UUID, Tags) ->
     run(["create", {uuid, UUID} | Tags]).
 
 run(Cmd) ->
+    lager:debug("[iocage] ~p", [Cmd]),
     fifo_cmd:run(?IOCAGE, Cmd).
 
