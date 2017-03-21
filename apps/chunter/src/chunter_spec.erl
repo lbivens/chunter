@@ -229,8 +229,11 @@ generate_iocage(Package, Dataset, OwnerData) ->
     D0 = [{rlimits, on}, {vnet, on}],
     Ram = ft_package:ram(Package),
     CPUCap = ft_package:cpu_cap(Package),
+    {ok, Q} = jsxd:get(<<"quota">>, Package),
+
     D1 = [{memoryuse, io_lib:format("~pM:deny", [Ram])},
-          {pcpu, io_lib:format("~p:deny", [CPUCap])}
+          {pcpu, io_lib:format("~p:deny", [CPUCap])},
+          {quota, Q}
           | D0],
 
     %% Networking things
@@ -279,11 +282,18 @@ generate_iocage(Package, Dataset, OwnerData) ->
 
     Owner = jsxd:get(<<"owner">>, <<"00000000-0000-0000-0000-000000000000">>,
                      OwnerData),
+    Boot = jsxd:get(<<"autoboot">>, true, OwnerData),
 
-    D3 = [{owner, Owner}
+    D3 = [{owner, Owner},
+          {boot, to_on_off(Boot)}
           | D2],
 
     {D3, ft_dataset:version(Dataset)}.
+
+to_on_off(true) ->
+    <<"on">>;
+to_on_off(false) ->
+    <<"off">>.
 
 %% RamShare = ram_shares(Ram),
 %% MaxSwap = dflt(ft_package:max_swap(Package), Ram * 2),

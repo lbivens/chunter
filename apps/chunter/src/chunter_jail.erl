@@ -43,6 +43,13 @@ read_cfg([{<<"boot">>, <<"on">>} | R], VM) ->
 read_cfg([{<<"boot">>, <<"off">>} | R], VM) ->
     read_cfg(R, VM#{<<"autoboot">> => false});
 
+read_cfg([{<<"quota">>, <<"off">>} | R], VM) ->
+    read_cfg(R, VM#{<<"quota">> => 0});
+
+read_cfg([{<<"quota">>, V} | R], VM) ->
+    read_cfg(R, VM#{<<"quota">> => V});
+
+
 read_cfg([{<<"memoryuse">>, M} | R], VM) ->
     {match, [Sb, T]} = re:run(M, "([0-9]+)(.):.*", ?REOPTS),
     S = binary_to_integer(Sb),
