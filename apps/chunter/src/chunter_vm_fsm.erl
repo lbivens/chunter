@@ -319,7 +319,7 @@ initialized({create, Package, Dataset, VMSpec},
     lager:debug("Creating with spec: ~p", [VMData]),
     Ram = ft_package:ram(Package),
     chunter_server:reserve_mem(Ram),
-    case {ft_dataset:zone_type(Dataset),
+    case {ft_dataset:type(Dataset),
           ft_dataset:zone_type(Dataset)} of
         {jail, _} ->
             create_jail(Dataset, Package, VMSpec, State);
