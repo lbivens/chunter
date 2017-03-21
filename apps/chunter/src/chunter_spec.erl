@@ -229,8 +229,9 @@ generate_iocage(Package, Dataset, OwnerData) ->
     D0 = [{rlimits, on}, {vnet, on}],
     Ram = ft_package:ram(Package),
     CPUCap = ft_package:cpu_cap(Package),
-    D1 = [{memoryuse, io_lib:format("~pM:deny", [Ram])},
-          {pcpu, io_lib:format("~p:deny", [CPUCap])}
+    D1 = [{memoryuse, io_lib:format("~pM:deny", [Ram])}%,
+          %% depends on https://github.com/iocage/iocage/issues/76
+          %% {pcpu, io_lib:format("~p:deny", [CPUCap])}
           | D0],
 
     %% Networking things

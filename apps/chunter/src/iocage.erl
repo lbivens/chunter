@@ -21,7 +21,7 @@ destroy(UUID) ->
     run(["destroy", f, UUID]).
 
 create(UUID, Tags) ->
-    run(["create", <<"--uuid ", UUID/binary>> | Tags]).
+    run(["create", {u, UUID} | Tags]).
 
 run(Cmd) ->
     lager:debug("[iocage] ~p", [Cmd]),
