@@ -77,7 +77,7 @@ create(Dataset, Package, VMSpec, UUID) ->
                [UUID]),
     {Conf, Release} = chunter_spec:to_iocage(Package, Dataset, VMSpec),
     Tags = build_tags(Conf, []),
-    Args = Tags ++ [Release],
+    Args =  [{r, Release} | Tags],
     iocage:create(UUID, Args).
 
 %% lager:info("[setup:~s] Starting zone setup.", [UUID]),
