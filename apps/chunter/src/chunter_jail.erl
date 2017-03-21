@@ -24,9 +24,8 @@ read_cfg([{<<"allow_quotas">>, Quota} | R], VM) ->
 read_cfg([{<<"tag">>, V} | R], VM) ->
     read_cfg(R, VM#{<<"alias">> => V});
 
-%% depends on https://github.com/iocage/iocage/issues/76
-%% read_cfg([{<<"pcpu">>, V} | R], VM) ->
-%%     read_cfg(R, VM#{<<"cpu_cap">> => V});
+read_cfg([{<<"pcpu">>, V} | R], VM) ->
+    read_cfg(R, VM#{<<"cpu_cap">> => V});
 
 read_cfg([{<<"resolver">>, V} | R], VM) ->
     read_cfg(R, VM#{<<"resolvers">> => V});
@@ -55,7 +54,7 @@ read_cfg([{<<"memoryuse">>, M} | R], VM) ->
               <<"K">> ->
                   S div 1024
           end,
-    read_cfg(R, VM#{<<"ram">> => Ram});
+    read_cfg(R, VM#{<<"max_physical_memory">> => Ram*1024*1024});
 
 
 read_cfg([{<<"ip4_addr">>, IPData} | R], VM) ->
