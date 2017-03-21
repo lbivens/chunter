@@ -371,6 +371,9 @@ generate_spec(Package, Dataset, OwnerData) ->
                 {ok, <<"kvm">>} ->
                     kvm_spec(Base0, Package, Dataset);
                 {ok, <<"zone">>} ->
+                    zone_spec(Base0, Package, Dataset, OwnerData);
+                {ok, <<"jail">>} ->
+                    %%TODO: does that make sense?
                     zone_spec(Base0, Package, Dataset, OwnerData)
             end,
     Result = jsxd:fold(fun (<<"ssh_keys">>, V, Obj) ->
