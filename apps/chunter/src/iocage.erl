@@ -1,6 +1,6 @@
 -module(iocage).
 
--export([list/0, destroy/1, start/1, stop/1, restart/1]).
+-export([list/0, destroy/1, start/1, stop/1, restart/1, create/2]).
 
 -define(IOCAGE, "/usr/local/bin/iocage").
 
@@ -20,5 +20,9 @@ destroy(UUID) ->
     stop(UUID),
     run(["destroy", f, UUID]).
 
+create(UUID, Tags) ->
+    run(["create", {uuid, UUID} | Tags]).
+
 run(Cmd) ->
     fifo_cmd:run(?IOCAGE, Cmd).
+

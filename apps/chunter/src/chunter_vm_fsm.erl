@@ -320,6 +320,8 @@ initialized({create, Package, Dataset, VMSpec},
     Ram = ft_package:ram(Package),
     chunter_server:reserve_mem(Ram),
     case ft_dataset:zone_type(Dataset) of
+        jail ->
+            create_jail(Dataset, Package, VMSpec, State);
         ipkg ->
             create_ipkg(Dataset, Package, VMSpec, State);
         lipkg ->
@@ -1595,6 +1597,13 @@ create_ipkg(Dataset, Package, VMSpec, State = #state{uuid = UUID}) ->
     {next_state, creating,
      State#state{type = zone, zone_type = ipgk,
                  public_state = change_state(UUID, <<"running">>)}}.
+
+create_jail(Dataset, Package, VMSpec, State = #state{uuid = UUID}) ->
+    chunter_jail:create(Dataset, Package, VMSpec, UUID),
+    {next_state, creating,
+     State#state{type = zone, zone_type = ipgk,
+                 public_state = change_state(UUID, <<"running">>)}}.
+
 
 wait_for_started(UUID, S) ->
     timer:sleep(1000),
