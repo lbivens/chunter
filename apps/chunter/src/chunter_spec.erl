@@ -234,14 +234,21 @@ generate_iocage(Package, Dataset, OwnerData) ->
           | D0],
 
     %% Networking things
-    {ok, [NicIn | NicsIn]} = jsxd:get(<<"nics">>, OwnerData),
+    {ok, [NicSpec | NicsIn]} = jsxd:get(<<"nics">>, OwnerData),
     case length(NicsIn) of
         0 ->
             ok;
         _ ->
             lager:warning("Jails currenlty only support one nic!")
     end,
-    {NicBin, NicSpec} = chunter_nic_srv:get_vnic(NicIn),
+
+
+    {ok, Network} = jsxd:get(<<"nic_tag">>, NicSpec),
+
+    {ok, Networks} = application:get_env(chunter, network_tags),
+    {Network, IFace} = lists:keyfind(Network, 1, Networks),
+
+
     {ok, IPBin} = jsxd:get(<<"ip">>, NicSpec),
     IP = binary_to_list(IPBin),
     {ok, Netmask} = jsxd:get(<<"netmask">>, NicSpec),
@@ -261,7 +268,7 @@ generate_iocage(Package, Dataset, OwnerData) ->
                        <<"8.8.8.8">>
                end,
 
-    D2 = [{ip4_addr, io_lib:format("~s|~s/~p", [NicBin, IP, CIDR])},
+    D2 = [{ip4_addr, io_lib:format("~s|~s/~p", [IFace, IP, CIDR])},
           {defaultrouter, GW},
           {host_hostname, Hostname},
           {host_domainname, Domain},
