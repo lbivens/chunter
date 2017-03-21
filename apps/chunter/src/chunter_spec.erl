@@ -27,6 +27,8 @@ to_vmadm(Package, Dataset, OwnerData) ->
         {ok, <<"kvm">>} ->
             generate_spec(Package, Dataset, OwnerData);
         {ok, <<"zone">>} ->
+            generate_spec(Package, Dataset, OwnerData);
+        {ok, <<"jail">>} ->
             generate_spec(Package, Dataset, OwnerData)
     end.
 
