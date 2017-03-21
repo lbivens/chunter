@@ -21,8 +21,21 @@ load(#{<<"name">> := UUID} = VM) ->
 read_cfg([{<<"allow_quotas">>, Quota} | R], VM) ->
     read_cfg(R, VM#{<<"quota">> => Quota});
 
-read_cfg([{<<"tag">>, Alias} | R], VM) ->
-    read_cfg(R, VM#{<<"alias">> => Alias});
+read_cfg([{<<"tag">>, V} | R], VM) ->
+    read_cfg(R, VM#{<<"alias">> => V});
+
+read_cfg([{<<"pcpu">>, V} | R], VM) ->
+    read_cfg(R, VM#{<<"cpu_cap">> => V});
+
+read_cfg([{<<"resolver">>, V} | R], VM) ->
+    read_cfg(R, VM#{<<"resolvers">> => V});
+
+read_cfg([{<<"host_domainname">>, V} | R], VM) ->
+    read_cfg(R, VM#{<<"dns_domain">> => V});
+
+read_cfg([{<<"host_hostname">>, V} | R], VM) ->
+    read_cfg(R, VM#{<<"hostname">> => V});
+
 
 read_cfg([{<<"boot">>, <<"on">>} | R], VM) ->
     read_cfg(R, VM#{<<"autoboot">> => true});
@@ -41,7 +54,7 @@ read_cfg([{<<"memoryuse">>, M} | R], VM) ->
               <<"K">> ->
                   S div 1024
           end,
-    read_cfg(R, VM#{<<"Ram">> => Ram});
+    read_cfg(R, VM#{<<"ram">> => Ram});
 
 
 read_cfg([{<<"ip4_addr">>, IPData} | R], VM) ->
@@ -57,7 +70,7 @@ read_cfg([{<<"ip4_addr">>, IPData} | R], VM) ->
               <<"interface">> => NIC,
               <<"netmask">> => Mask
              },
-            read_cfg(R, VM#{<<"networks">> => [Network]});
+            read_cfg(R, VM#{<<"nics">> => [Network]});
         _ ->
             read_cfg(R, VM)
     end;
