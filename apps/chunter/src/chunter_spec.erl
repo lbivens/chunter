@@ -229,7 +229,7 @@ generate_iocage(Package, Dataset, OwnerData) ->
     D0 = [{rlimits, on}, {vnet, on}],
     Ram = ft_package:ram(Package),
     CPUCap = ft_package:cpu_cap(Package),
-    {ok, Q} = jsxd:get(<<"quota">>, Package),
+    Q = ft_package:quota(Package),
 
     D1 = [{memoryuse, io_lib:format("~pM:deny", [Ram])},
           {pcpu, io_lib:format("~p:deny", [CPUCap])},
