@@ -25,7 +25,8 @@ read_cfg([{<<"tag">>, V} | R], VM) ->
     read_cfg(R, VM#{<<"alias">> => V});
 
 read_cfg([{<<"pcpu">>, V} | R], VM) ->
-    read_cfg(R, VM#{<<"cpu_cap">> => V});
+    {match, [Sb]} = re:run(V, "([0-9]+):.*", ?REOPTS),
+    read_cfg(R, VM#{<<"cpu_cap">> => binary_to_integer(Sb)});
 
 read_cfg([{<<"resolver">>, V} | R], VM) ->
     read_cfg(R, VM#{<<"resolvers">> => V});
