@@ -1600,7 +1600,12 @@ create_ipkg(Dataset, Package, VMSpec, State = #state{uuid = UUID}) ->
                  public_state = change_state(UUID, <<"running">>)}}.
 
 create_jail(Dataset, Package, VMSpec, State = #state{uuid = UUID}) ->
-    {ok, _} = chunter_jail:create(Dataset, Package, VMSpec, UUID),
+    R = chunter_jail:create(Dataset, Package, VMSpec, UUID),
+    ls_vm:creating(UUID, false),
+    Org = jsxd:get(<<"owner">>, <<>>, VMSpec),
+    confirm_create(UUID, Org),
+    {ok, _}  = R,
+
     {next_state, creating,
      State#state{type = jail,
                  public_state = change_state(UUID, <<"running">>)}}.
