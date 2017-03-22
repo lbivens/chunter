@@ -233,7 +233,7 @@ generate_iocage(Package, Dataset, OwnerData) ->
 
     D1 = [{memoryuse, io_lib:format("~pM:deny", [Ram])},
           {pcpu, io_lib:format("~p:deny", [CPUCap])},
-          {quota, io_lib:format("~p", [Q])}
+          {quota, io_lib:format("~pG", [Q])}
           | D0],
 
     %% Networking things
