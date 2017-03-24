@@ -135,7 +135,12 @@ case "$1" in
             echo "We died with exit code $ES but still exit properly"
             #exit $ES
         fi
-        pkill -z0 zonedoor
+        case `uname -s` in
+            SunOS)
+                #We only pkill -z0 zonedoor on Solaris
+                pkill -z0 zonedoor
+            ;;
+        esac
         while `kill -0 $PID 2>/dev/null`;
         do
             sleep 1
