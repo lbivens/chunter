@@ -154,7 +154,12 @@ case "$1" in
         if [ "$ES" -ne 0 ]; then
             exit $ES
         fi
-        pkill -z0 zonedoor
+        case `uname -s` in
+            SunOS)
+                #We only pkill -z0 zonedoor on Solaris
+                pkill -z0 zonedoor
+            ;;
+        esac
         ;;
 
     reboot)
@@ -164,7 +169,12 @@ case "$1" in
         if [ "$ES" -ne 0 ]; then
             exit $ES
         fi
-        pkill -z0 zonedoor
+        case `uname -s` in
+            SunOS)
+                #We only pkill -z0 zonedoor on Solaris
+                pkill -z0 zonedoor
+            ;;
+        esac
         ;;
     connections)
         shift
