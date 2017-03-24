@@ -29,7 +29,7 @@ read_cfg([{<<"pcpu">>, V} | R], VM) ->
     read_cfg(R, VM#{<<"cpu_cap">> => binary_to_integer(Sb)});
 
 read_cfg([{<<"resolver">>, V} | R], VM) ->
-    read_cfg(R, VM#{<<"resolvers">> => V});
+    read_cfg(R, VM#{<<"resolvers">> => [V]});
 
 read_cfg([{<<"host_domainname">>, V} | R], VM) ->
     read_cfg(R, VM#{<<"dns_domain">> => V});
