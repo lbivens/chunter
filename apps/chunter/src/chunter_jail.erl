@@ -48,8 +48,21 @@ read_cfg([{<<"quota">>, <<"off">>} | R], VM) ->
     read_cfg(R, VM#{<<"quota">> => 0});
 
 read_cfg([{<<"quota">>, V} | R], VM) ->
-    read_cfg(R, VM#{<<"quota">> => V});
-
+    case re:run(V, "([0-9]+)([KMG])", ?REOPTS) of
+        {match, [Sb, T]} ->
+            S = binary_to_integer(Sb),
+            Q = case T of
+                    <<"G">> ->
+                        S;
+                    <<"M">> ->
+                        S div 1024;
+                    <<"K">> ->
+                        S div 1024 div 1024
+                end,
+            read_cfg(R, VM#{<<"quota">> => Q});
+        _ ->
+            read_cfg(R, VM#{<<"quota">> => 0})
+    end;
 
 read_cfg([{<<"memoryuse">>, M} | R], VM) ->
     {match, [Sb, T]} = re:run(M, "([0-9]+)(.):.*", ?REOPTS),
