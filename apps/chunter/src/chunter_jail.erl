@@ -65,15 +65,19 @@ read_cfg([{<<"quota">>, V} | R], VM) ->
     end;
 
 read_cfg([{<<"memoryuse">>, M} | R], VM) ->
-    {match, [Sb, T]} = re:run(M, "([0-9]+)(.):.*", ?REOPTS),
-    S = binary_to_integer(Sb),
-    Ram = case T of
-              <<"G">> ->
-                  S * 1024;
-              <<"M">> ->
-                  S;
-              <<"K">> ->
-                  S div 1024
+    Ram = case re:run(M, "([0-9]+)(.):.*", ?REOPTS) of
+              {match, [Sb, T]} ->
+                  S = binary_to_integer(Sb),
+                  case T of
+                      <<"G">> ->
+                          S * 1024;
+                      <<"M">> ->
+                          S;
+                      <<"K">> ->
+                          S div 1024
+                  end;
+              _ ->
+                  0
           end,
     read_cfg(R, VM#{<<"max_physical_memory">> => Ram*1024*1024});
 
