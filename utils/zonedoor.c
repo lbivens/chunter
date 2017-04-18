@@ -119,7 +119,9 @@ server(zdoor_cookie_t *cookie, char *argp, size_t arpg_sz)
 		pthread_mutex_unlock(&lock);
 		(void) fprintf(stderr,
 		    "Timed out waiting for IDLE state\n");
-		goto failed;
+        // If we can't get to idle state we'll stop
+        exit(1);
+		//goto failed;
 	}
 	// send the message
 	state = WAITING;

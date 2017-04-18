@@ -9,7 +9,7 @@ include fifo.mk
 
 apps/chunter/priv/zonedoor: utils/zonedoor.c
 # Only copile the zonedoor under sunus
-	[ $(shell uname) != "SunOS" ] && true || gcc -lzdoor utils/zonedoor.c -o apps/chunter/priv/zonedoor
+	[ $(shell uname) != "SunOS" ] && cp `which cat` apps/chunter/priv/zonedoor || gcc -lzdoor utils/zonedoor.c -o apps/chunter/priv/zonedoor
 
 version:
 	@echo "$(shell git symbolic-ref HEAD 2> /dev/null | cut -b 12-)-$(shell git log --pretty=format:'%h, %ad' -1)" > chunter.version

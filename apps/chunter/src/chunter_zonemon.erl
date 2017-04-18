@@ -15,7 +15,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+         terminate/2, code_change/3, simplifie_state/1]).
 
 -ignore_xref([start_link/0]).
 
@@ -60,15 +60,17 @@ start_link() ->
 init([]) ->
     {Name, _, _} = chunter_server:host_info(),
     lager:info("chunter:zonemon - initializing: ~s", [Name]),
-    Zonemon = code:priv_dir(chunter) ++ "/zonemon.sh",
     timer:send_interval(dflt_env(zonemon_interval, ?INTERVAL), zonecheck),
-    PortOpts = [exit_status, use_stdio, binary, {line, 1000}],
-    ZonePort = erlang:open_port({spawn, Zonemon}, PortOpts),
-    lager:info("chunter:zonemon - stats watchdog started.", []),
-    {ok, #state{
-            name=Name,
-            port=ZonePort
-           }}.
+    case chunter_utils:has_feature(zonemon) of
+        true ->
+            Zonemon = code:priv_dir(chunter) ++ "/zonemon.sh",
+            PortOpts = [exit_status, use_stdio, binary, {line, 1000}],
+            ZonePort = erlang:open_port({spawn, Zonemon}, PortOpts),
+            lager:info("chunter:zonemon - stats watchdog started.", []),
+            {ok, #state{name=Name, port=ZonePort}};
+        false ->
+            {ok, #state{name = Name}}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -146,6 +148,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+terminate(_Reason, #state{port = undefined}) ->
+    ok;
 terminate(_Reason, #state{port=Zport}) ->
     erlang:port_close(Zport),
     ok.
@@ -167,6 +171,10 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec simplifie_state(OriginalState::binary()) -> fifo:vm_state().
 
+simplifie_state(<<"up">>) ->
+    <<"running">>;
+simplifie_state(<<"stopped">>) ->
+    <<"stopped">>;
 simplifie_state(<<"installed">>) ->
     <<"stopped">>;
 simplifie_state(<<"uninitialized">>) ->
@@ -184,7 +192,7 @@ simplifie_state(<<"shutting_down">>) ->
 simplifie_state(<<"empty">>) ->
     <<"shutting_down">>;
 simplifie_state(<<"down">>) ->
-    <<"shutting_down">>;
+    <<"stopped">>;
 simplifie_state(<<"dying">>) ->
     <<"shutting_down">>;
 simplifie_state(<<"dead">>) ->

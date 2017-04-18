@@ -127,8 +127,8 @@ init([]) ->
     %% We subscribe to sniffle register channel - that way we can reregister to
     %% dead sniffle processes.
     mdns_client_lib_connection_event:add_handler(chunter_connect_event),
-    ServiceIVal = application:get_env(chunter, update_services_interval, 10000),
     %% This is every 10 seconds
+    ServiceIVal = application:get_env(chunter, update_services_interval, 10000),
     timer:send_interval(ServiceIVal, update_services),
     register_hypervisor(),
     lists:foldl(
@@ -143,15 +143,15 @@ init([]) ->
                 [<<"ipkg">>];
             solaris ->
                 [<<"ipkg">>];
+            freebsd ->
+                [<<"jail">>];
             smartos ->
                 case os:cmd("ls /dev/kvm") of
                     "/dev/kvm\n" ->
                         [<<"zone">>, <<"kvm">>];
                     _ ->
                         [<<"zone">>]
-                end;
-            _ ->
-                []
+                end
         end,
     {Host, _IPStr, _Port} = host_info(),
     ls_hypervisor:sysinfo(Host, SysInfo),
@@ -195,6 +195,9 @@ handle_call({call, _Auth, Call}, _From, State) ->
     Reply = {error, {unsupported, Call}},
     {reply, Reply, State};
 
+handle_call({service, _, _}, _From, State = #state{system = freebsd}) ->
+    {reply, {error, not_supported}, State};
+
 handle_call({service, enable, Service}, _From, State) ->
     {reply, smurf:enable(Service, []), State};
 
@@ -235,9 +238,9 @@ handle_cast(update_mem, State = #state{
                [Host, ProvMem, TotalMem]),
     FreeMem = TotalMem - ReservedMem - ProvMem,
     ls_hypervisor:set_resource(Host, [{[<<"free-memory">>], FreeMem},
-                                       {[<<"reserved-memory">>], ReservedMem},
-                                       {[<<"provisioned-memory">>], ProvMem},
-                                       {[<<"total-memory">>], TotalMem}]),
+                                      {[<<"reserved-memory">>], ReservedMem},
+                                      {[<<"provisioned-memory">>], ProvMem},
+                                      {[<<"total-memory">>], TotalMem}]),
     {noreply, State#state{
                 total_memory = TotalMem,
                 provisioned_memory = ProvMem
@@ -253,8 +256,8 @@ handle_cast({reserve_mem, N}, State =
     ProvMem1 = ProvMem + N,
     Free = TotalMem - ReservedMem - ProvMem1,
     ls_hypervisor:set_resource(Host,
-                              [{[<<"free-memory">>], Free},
-                               {[<<"provisioned-memory">>], ProvMem1}]),
+                               [{[<<"free-memory">>], Free},
+                                {[<<"provisioned-memory">>], ProvMem1}]),
     {noreply, State#state{
                 provisioned_memory = ProvMem1
                }};
@@ -267,10 +270,6 @@ handle_cast(connect, #state{name = Host,
     ls_hypervisor:version(Host, ?VERSION),
     update_mem(),
     case System of
-        S when S =:= omnios; S =:= solaris ->
-            {ok, Networks} = application:get_env(chunter, network_tags),
-            Networks1 = [list_to_binary(N) || {N, _} <- Networks],
-            ls_hypervisor:networks(Host, Networks1);
         smartos ->
             Networks = re:split(
                          os:cmd("cat /usbkey/config  | grep -v '^#' | "
@@ -283,7 +282,11 @@ handle_cast(connect, #state{name = Host,
                           ",\\s*|\n"),
             Etherstub1 = lists:delete(<<>>, Etherstub),
             ls_hypervisor:networks(Host, Networks1),
-            ls_hypervisor:etherstubs(Host, Etherstub1)
+            ls_hypervisor:etherstubs(Host, Etherstub1);
+        _ ->
+            {ok, Networks} = application:get_env(chunter, network_tags),
+            Networks1 = [list_to_binary(N) || {N, _} <- Networks],
+            ls_hypervisor:networks(Host, Networks1)
     end,
     ls_hypervisor:virtualisation(Host, Caps),
     register_vms(),
@@ -312,11 +315,14 @@ handle_cast(Msg, #state{name = Name} = State) ->
 %%--------------------------------------------------------------------
 handle_info(update_services, State=#state{tick = _T}) when _T >= ?MAX_TICK ->
     {noreply, State#state{services = [], tick = 0}};
-
+handle_info(update_services, State=#state{system = freebsd}) ->
+    update_mem(),
+    {noreply, State#state{services = [], tick = 0}};
 handle_info(update_services, State=#state{
                                       name=Host,
-                                      services = OldServices
-                                     }) ->
+                                      services = OldServices,
+                                      system = System
+                                     }) when System =/= freebsd->
     %% We also update the memory while we are at it.
     update_mem(),
     case {chunter_smf:update(OldServices), OldServices} of
@@ -331,11 +337,11 @@ handle_info(update_services, State=#state{
         {{ok, ServiceSet, Changed}, _} ->
             %% Update changes which are not removes
             ls_hypervisor:set_service(
-               Host,
+              Host,
               [{[Srv], case SrvState of
                            <<"removed">> ->
                                delete;
-                            _ ->
+                           _ ->
                                SrvState
                        end}
                || {Srv, _, SrvState} <- Changed]),
@@ -449,6 +455,24 @@ update_services(UUID, Changed) ->
                                  <<"data">> => Changed1})
     end.
 
+mem_total() ->
+    case chunter_utils:system() of
+        S when S =:= omnios; S =:= solaris; s =:= smartos ->
+            mem_solaris_total();
+        freebsd ->
+            mem_bsd_total()
+    end.
+
+mem_bsd_total() ->
+    "hw.physmem: " ++ R = os:cmd("sysctl hw.physmem"),
+    list_to_integer(lib:nonl(R)) div 1024 div 1024.
+
+mem_solaris_total() ->
+    {TotalMem, _} =
+        string:to_integer(
+          os:cmd("/usr/sbin/prtconf | grep Memor | awk '{print $3}'")),
+    TotalMem.
+
 mem() ->
     VMS = chunter_zone:list(),
     ProvMemA = lists:foldl(
@@ -465,9 +489,7 @@ mem() ->
                          end + Mem
                  end, 0, VMS),
     ProvMem = round(ProvMemA / (1024*1024)),
-    {TotalMem, _} =
-        string:to_integer(
-          os:cmd("/usr/sbin/prtconf | grep Memor | awk '{print $3}'")),
+    TotalMem = mem_total(),
     {TotalMem, ProvMem}.
 
 register_vms() ->

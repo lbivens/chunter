@@ -34,7 +34,16 @@ list_() ->
             [#{uuid => UUID, name => UUID, state => VMState} ||
                 %% SmartOS seems to have one more coumn
                 [ID, UUID, VMState, _Path, _OtherUUID, _Type, _IP | _] <-
-                    zoneadm_list(), ID =/= <<"0">>]
+                    zoneadm_list(), ID =/= <<"0">>];
+        freebsd ->
+            {ok, L} = iocage:list(),
+            L1 = re:split(L, "\n"),
+            L2 = [E || E <- L1, E =/= <<>>],
+            L3 = [re:split(E, "\t") || E <- L2],
+            [#{uuid => UUID, name => UUID,
+               state => chunter_zonemon:simplifie_state(State)} ||
+                [_ID, UUID, _Boot, State, _Tag, _Type, _IP, _Release, _TPL]
+                    <- L3]
     end.
 
 -spec get(ZUUID::fifo:uuid()) -> {ok, fifo:vm_config()} | {error, not_found}.
@@ -86,7 +95,15 @@ get_raw(ZUUID) when is_binary(ZUUID) ->
                       || Line <- re:split(os:cmd([?ZONEADM, " -z ", UUIDs,
                                                   " list -p"]), "\n")],
             [{ID, UUID, VMState, Path, UUID, Type} ||
-                [ID, UUID, VMState, Path, _UUID, Type, _IP | _] <- Zones]
+                [ID, UUID, VMState, Path, _UUID, Type, _IP | _] <- Zones];
+        freebsd ->
+            {ok, L} = iocage:list(),
+            L1 = re:split(L, "\n"),
+            L2 = [re:split(E, "\t") || E <- L1, E =/= <<>>],
+            [{ID, ZUUID, chunter_zonemon:simplifie_state(State),
+              <<"/iocage/", ZUUID/binary>>, ZUUID, <<"jail">>}
+             || [ID, UUID, _Boot, State, _Tag, _Type, _IP, _Release, _TPL]
+                    <- L2, UUID =:= ZUUID]
     end.
 
 %% zonecfg -z 2398fe7c-032f-11e5-abb0-b33f9f953915 delete -F

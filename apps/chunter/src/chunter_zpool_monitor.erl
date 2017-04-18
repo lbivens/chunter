@@ -104,8 +104,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(tick, State = #state{last = Last,
                                  skipped = Skipped}) ->
-    case get_stats("/usr/sbin/zpool list -pH "
-                   "-oname,size,alloc,free,dedup,health") of
+    case get_stats() of
         Last when Skipped < 120 ->
             {noreply, State};
         Pools ->
@@ -148,7 +147,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 
-get_stats(Cmd) ->
+get_stats() ->
+    Opts = "name,size,alloc,free,dedup,health",
+    {ok, Res} = chunter_zfs:zpool(["list", p, 'H', {o, Opts}]),
     lists:foldl(
       fun (Line, Acc) ->
               [Name, Size, Alloc, Free, Dedup, Health] = re:split(Line, "\t"),
@@ -166,7 +167,7 @@ get_stats(Cmd) ->
                {[Name, <<"free">>], bin_to_gb(Free)},
                {[Name, <<"dedup">>], D},
                {[Name, <<"health">>], Health} | Acc]
-      end, [], re:split(os:cmd(Cmd), "\n", [trim])).
+      end, [], re:split(Res, "\n", [trim])).
 
 strip_x(<<"x">>, Acc) ->
     Acc;

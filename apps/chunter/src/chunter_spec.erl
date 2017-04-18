@@ -11,6 +11,7 @@
 
 -export([to_vmadm/3,
          to_zonecfg/3,
+         to_iocage/3,
          to_sniffle/1,
          create_update/3
         ]).
@@ -26,6 +27,8 @@ to_vmadm(Package, Dataset, OwnerData) ->
         {ok, <<"kvm">>} ->
             generate_spec(Package, Dataset, OwnerData);
         {ok, <<"zone">>} ->
+            generate_spec(Package, Dataset, OwnerData);
+        {ok, <<"jail">>} ->
             generate_spec(Package, Dataset, OwnerData)
     end.
 
@@ -39,6 +42,11 @@ to_sniffle(Spec) ->
 to_zonecfg(Package, Dataset, OwnerData) ->
     generate_zonecfg(Package, Dataset, OwnerData).
 
+to_iocage(Package, Dataset, OwnerData) ->
+    generate_iocage(Package, Dataset, OwnerData).
+
+brand_to_type(<<"jail">>) ->
+    jail;
 brand_to_type(<<"ipkg">>) ->
     ipkg;
 brand_to_type(<<"lipkg">>) ->
@@ -101,7 +109,9 @@ translate_to_sniffle(<<"brand">>, Brand, Obj) ->
                     O1
             end;
         ipkg ->
-            jsxd:set(<<"type">>, <<"ipkg">>, Obj)
+            jsxd:set(<<"type">>, <<"ipkg">>, Obj);
+        jail ->
+            jsxd:set(<<"type">>, <<"jail">>, Obj)
     end;
 translate_to_sniffle(<<"max_physical_memory">>, V, Obj) ->
     jsxd:update(<<"ram">>, fun(E) -> E end, round(V/(1024*1024)), Obj);
@@ -215,6 +225,137 @@ generate_zonecfg(Package, Dataset, OwnerData) ->
               exit],
     {NICs, Base ++ Network ++ RCTL ++ Attr ++ Opt ++ Finish}.
 
+generate_iocage(Package, Dataset, OwnerData) ->
+    D0 = [{rlimits, on}, {vnet, on}],
+    Ram = ft_package:ram(Package),
+    CPUCap = ft_package:cpu_cap(Package),
+    Q = ft_package:quota(Package),
+
+    D1 = [{memoryuse, io_lib:format("~pM:deny", [Ram])},
+          {pcpu, io_lib:format("~p:deny", [CPUCap])},
+          {quota, io_lib:format("~pG", [Q])}
+          | D0],
+
+    %% Networking things
+    {ok, [NicSpec | NicsIn]} = jsxd:get(<<"nics">>, OwnerData),
+    case length(NicsIn) of
+        0 ->
+            ok;
+        _ ->
+            lager:warning("Jails currenlty only support one nic!")
+    end,
+
+
+    {ok, Network} = jsxd:get(<<"nic_tag">>, NicSpec),
+
+    {ok, Networks} = application:get_env(chunter, network_tags),
+    {_Network, IFace} = lists:keyfind(binary_to_list(Network), 1, Networks),
+
+
+    {ok, IPBin} = jsxd:get(<<"ip">>, NicSpec),
+    IP = binary_to_list(IPBin),
+    {ok, Netmask} = jsxd:get(<<"netmask">>, NicSpec),
+    CIDR = ft_iprange:mask_to_cidr(Netmask),
+    {ok, GWBin} = jsxd:get(<<"gateway">>, NicSpec),
+    GW = binary_to_list(GWBin),
+
+    {ok, Hostname} = jsxd:get(<<"hostname">>, OwnerData),
+
+    Domain = jsxd:get(<<"dns_domain">>, <<"local">>, OwnerData),
+
+    Resolver = case jsxd:get(<<"resolvers">>, OwnerData) of
+                   {ok, ResolversL} ->
+                       re:split(ResolversL, ",");
+                   _ ->
+                       %% TODO: read the correct one
+                       <<"8.8.8.8">>
+               end,
+
+    D2 = [{ip4_addr, io_lib:format("~s|~s/~p", [IFace, IP, CIDR])},
+          {defaultrouter, GW},
+          {host_hostname, Hostname},
+          {host_domainname, Domain},
+          {resolver, Resolver}
+          | D1],
+
+    %% General Stuff
+
+    Owner = jsxd:get(<<"owner">>, <<"00000000-0000-0000-0000-000000000000">>,
+                     OwnerData),
+    Boot = jsxd:get(<<"autoboot">>, true, OwnerData),
+
+    D3 = [{owner, Owner},
+          {boot, to_on_off(Boot)}
+          | D2],
+
+    {D3, ft_dataset:version(Dataset)}.
+
+to_on_off(true) ->
+    <<"on">>;
+to_on_off(false) ->
+    <<"off">>.
+
+%% RamShare = ram_shares(Ram),
+%% MaxSwap = dflt(ft_package:max_swap(Package), Ram * 2),
+%% NicsIn1 = jsxd:set([0, <<"primary">>], true, NicsIn),
+%% lager:info("nics: ~p", [NicsIn1]),
+%% MaxSwap1 = erlang:max(256, MaxSwap) * 1024 * 1024,
+%% {ok, ZoneRootS} = application:get_env(chunter, zone_root),
+%% ZoneRoot = list_to_binary(ZoneRootS),
+%% Base = [create,
+%%         {zonename, UUID},
+%%         {zonepath, <<ZoneRoot/binary, "/", UUID/binary>>},
+%%         {brand, ft_dataset:zone_type(Dataset)},
+%%         {autoboot, true},
+%%         {limitpriv, [default, dtrace_proc, dtrace_user]},
+%%         {'ip-type', exclusive}],
+%% Network = [{add, net, [{physical, NIC}]} || {NIC, _} <- NICs],
+%% RamB = Ram * 1024 * 1024,
+%% CPUShares = dflt(ft_package:cpu_shares(Package), RamShare),
+%% ZFSShares = dflt(ft_package:cpu_shares(Package), RamShare),
+%% RCTL = [{rctl, <<"zone.cpu-shares">>, privileged, CPUShares, none},
+%%         %% Constants
+%%         {rctl, <<"zone.max-lwps">>,    privileged, 2000, deny},
+%%         {rctl, <<"zone.max-msg-ids">>, privileged, 4096, deny},
+%%         {rctl, <<"zone.max-sem-ids">>, privileged, 4096, deny},
+%%         {rctl, <<"zone.max-shm-ids">>, privileged, 4096, deny},
+%%         %% Seems = mem/2
+%%         {rctl, <<"zone.max-shm-memory">>, privileged, RamB div 2, deny},
+%%         {rctl, <<"zone.zfs-io-priority">>, privileged, ZFSShares, none},
+%%         {rctl, <<"zone.cpu-cap">>, privileged, CPUCap, deny},
+%%         {add, 'capped-memory',
+%%          [{physical, RamB},
+%%           {swap, MaxSwap1},
+%%           {locked, RamB}]}],
+%% %% TODO: find a workaround, for some reason those things collide,
+%% %% is it the same as the others, where is the difference?
+%% %% {rctl, <<"zone.max-physical-memory">>, privileged, RamB, deny},
+%% %% {rctl, <<"zone.max-locked-memory">>, privileged, RamB, deny},
+%% %% {rctl, <<"zone.max-swap">>, privileged, MaxSwap1, deny}],
+%% lager:warning("[TODO] We don't generate a propper timestamp here"),
+%% Time = <<"2015-04-26T11:29:31.297Z">>,
+%% Attr = [{attr, <<"vm-version">>, string, 1},
+%%         %% TODO: generte proper date
+%%         {attr, <<"create-timestamp">>, string, Time},
+%%         {attr, <<"owner-uuid">>, string, Owner},
+%%         {attr, <<"tmpfs">>, string, Ram * 2}],
+%% Opt = jsxd:fold(fun (<<"resolvers">>, V, Acc) ->
+%%                         [{attr, <<"resolvers">>, string, V} | Acc];
+%%                     (<<"hostname">>, V, Acc) ->
+%%                         [{attr, <<"hostname">>, string, V} | Acc];
+%%                     (<<"alias">>, V, Acc) ->
+%%                         Base64 = base64:encode(V),
+%%                         [{attr, <<"alias">>, string,
+%%                           <<"\"", Base64/binary, "\"">>} | Acc];
+%%                     (K, _V, Acc) ->
+%%                         lager:warning("[zonecfg] Unsupported key: ~s", [K]),
+%%                         Acc
+%%                 end, [], OwnerData),
+%% Finish = [verify,
+%%           commit,
+%%           exit],
+%% {NICs, Base ++ Network ++ RCTL ++ Attr ++ Opt ++ Finish}.
+
 -spec generate_spec(Package::fifo:config(),
                     Dataset::fifo:config(),
                     OwnerData::fifo:config()) -> fifo:vm_config().
@@ -252,6 +393,9 @@ generate_spec(Package, Dataset, OwnerData) ->
                 {ok, <<"kvm">>} ->
                     kvm_spec(Base0, Package, Dataset);
                 {ok, <<"zone">>} ->
+                    zone_spec(Base0, Package, Dataset, OwnerData);
+                {ok, <<"jail">>} ->
+                    %%TODO: does that make sense?
                     zone_spec(Base0, Package, Dataset, OwnerData)
             end,
     Result = jsxd:fold(fun (<<"ssh_keys">>, V, Obj) ->

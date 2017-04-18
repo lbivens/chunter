@@ -24,13 +24,18 @@ subscribe(UUID, Type) ->
     gen_fsm:send_all_state_event(n(UUID), {subscribe, self()}).
 
 wait() ->
-    case net_adm:ping(?ZLOGIN_NODE) of
-        pong ->
-            ok;
-        _ ->
-            lager:debug("[zlogin] node not yet ready ... waiting ..."),
-            timer:sleep(1000),
-            wait()
+    case chunter_utils:has_feature(zlogin) of
+        true ->
+            case net_adm:ping(?ZLOGIN_NODE) of
+                pong ->
+                    ok;
+                _ ->
+                    lager:debug("[zlogin] node not yet ready ... waiting ..."),
+                    timer:sleep(1000),
+                    wait()
+            end;
+        false ->
+            ok
     end.
 
 n(UUID) ->
