@@ -1458,8 +1458,9 @@ chk_key(UUID, User, KeyID) ->
             lager:warning("[zonedoor:~s] User ~s trying to connect with key "
                           "~s -> ~s", [UUID, User, KeyID, Res]),
             Res;
-        _ ->
-            lager:warning("[zonedoor:~s] denied.", [UUID]),
+        E ->
+            lager:warning("[zonedoor:~s/~p] for reason ~p denied.",
+                          [UUID, KeyID, E]),
             false
     end.
 
