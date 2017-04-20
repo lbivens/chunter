@@ -85,7 +85,7 @@ zfs(Cmd, Args, Target) ->
 
 zfs(Args) ->
     ZFS = case chunter_utils:system() of
-              S when S =:= omnios; S =:= solaris; s =:= smartos ->
+              S when S =:= omnios; S =:= solaris; S =:= smartos ->
                   "/usr/sbin/zfs";
               freebsd ->
                   "/sbin/zfs"
@@ -95,7 +95,7 @@ zfs(Args) ->
 
 zpool(Args) ->
     ZPool = case chunter_utils:system() of
-                S when S =:= omnios; S =:= solaris; s =:= smartos ->
+                S when S =:= omnios; S =:= solaris; S =:= smartos ->
                     "/usr/sbin/zpool";
               freebsd ->
                     "/sbin/zpool"

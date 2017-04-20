@@ -457,7 +457,7 @@ update_services(UUID, Changed) ->
 
 mem_total() ->
     case chunter_utils:system() of
-        S when S =:= omnios; S =:= solaris; s =:= smartos ->
+        S when S =:= omnios; S =:= solaris; S =:= smartos ->
             mem_solaris_total();
         freebsd ->
             mem_bsd_total()
