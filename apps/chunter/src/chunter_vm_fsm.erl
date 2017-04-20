@@ -31,7 +31,8 @@
               rolling_back_snapshot/2,
               creating_snapshot/2,
               deleting_snapshot/2,
-              shutting_down/2]).
+              shutting_down/2,
+              register/1]).
 
 -export([create/4,
          load/1,
@@ -49,7 +50,8 @@
          delete_backup/2,
          rollback_snapshot/2,
          service_action/3,
-         force_state/2]).
+         force_state/2,
+         register/1]).
 
 %% gen_fsm callbacks
 -export([init/1,
