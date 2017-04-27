@@ -2,14 +2,14 @@ VERSION=0.9.2
 COMPONENT=chunter
 SUFFIX:=$(shell echo $(SUFFIX))
 BASENAME:=$(COMPONENT)-$(VERSION)$(SUFFIX)
-.PHONY: package clean
+.PHONY: bootstrap clean
 
 clean:
 	rm *.gz
 
 
 
-package: 
+bootstrap: 
 	cp install.sh $(BASENAME)
 	cp -r ../../_build/prod/rel/$(COMPONENT) $(COMPONENT)
 	-mkdir $(COMPONENT)/share/lib

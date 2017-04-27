@@ -21,6 +21,9 @@ version_header: version
 package: update rel
 	make -C rel/pkg package
 
+bootstrap: update rel
+	make -C rel/bootstrap bootstrap
+
 clean:
 	$(REBAR) clean
 	make -C rel/pkg clean
