@@ -1,8 +1,9 @@
 apps/chunter/priv/zonedoor
 *.version
 apps/chunter/src/chunter_version.hrl
-rel/pkg/*.gz
-rel/pkg/*.tar
+*.gz
+*.tar
+*.txz
 gproc_*
 .eunit
 ebin

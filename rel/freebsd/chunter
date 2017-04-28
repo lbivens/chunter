@@ -1,0 +1,41 @@
+#!/bin/sh
+#
+# $FreeBSD$
+#
+
+# PROVIDE: chunter
+# REQUIRE: LOGIN iocage
+# KEYWORD: shutdown
+
+
+. /etc/rc.subr
+
+name="chunter"
+rcvar=chunter_enable
+
+load_rc_config $name
+: ${chunter_enable="NO"}
+
+
+start_cmd="${name}_start"
+stop_cmd="${name}_stop"
+
+
+
+chunter_start()
+{
+	if checkyesno ${rcvar}; then
+		echo "* starting fifo chunter... "
+		/usr/chunter/bin/chunter start
+	fi
+}
+
+chunter_stop()
+{
+	if checkyesno ${rcvar}; then
+		echo "* stoping fifo chunter... "
+		/usr/chunter/bin/chunter stop
+	fi
+}
+
+run_rc_command "$1"

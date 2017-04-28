@@ -1,0 +1,4 @@
+deps:  { 
+	"coreutils" : { "origin" : "sysutils/coreutils", "version" : "8.25" },
+	"sudo" : { "origin" : "security/sudo", "version" : "1.8.19p2" },
+}

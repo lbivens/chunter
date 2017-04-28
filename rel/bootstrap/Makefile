@@ -5,7 +5,7 @@ BASENAME:=$(COMPONENT)-$(VERSION)$(SUFFIX)
 .PHONY: bootstrap clean
 
 clean:
-	rm *.gz
+	-rm *.gz
 
 
 
