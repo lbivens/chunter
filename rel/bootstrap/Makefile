@@ -2,16 +2,19 @@ VERSION=0.9.2
 COMPONENT=chunter
 SUFFIX:=$(shell echo $(SUFFIX))
 BASENAME:=$(COMPONENT)-$(VERSION)$(SUFFIX)
-.PHONY: package clean
+.PHONY: bootstrap clean
 
 clean:
-	rm *.gz
+	-rm *.gz
 
 
 
-package: 
+bootstrap: 
 	cp install.sh $(BASENAME)
 	cp -r ../../_build/prod/rel/$(COMPONENT) $(COMPONENT)
+	cp ../all/share/chunter-diag $(COMPONENT)/share/
+	cp ../smartos/share/chunter.xml $(COMPONENT)/share/
+	cp ../smartos/share/guess_ip.sh $(COMPONENT)/share/
 	-mkdir $(COMPONENT)/share/lib
 	cp /opt/local/lib/libncurses.so.6 $(COMPONENT)/share/lib/libncurses.so.6
 	cp /opt/local/lib/libcrypto.so.1.0.0 $(COMPONENT)/share/lib/libcrypto.so.1.0.0
